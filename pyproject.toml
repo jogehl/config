@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "config"
+dynamic = ["version"]
+description = ''
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "Gehlen, Joshua", email = "joshuagehlen@hotmail.com" },
+]
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "click",
+  "pyserde",
+]
+
+[project.urls]
+Documentation = "https://github.com/jogehl/config#readme"
+Issues = "https://github.com/jogehl/config/issues"
+Source = "https://github.com/jogehl/config"
+
+[project.scripts]
+config = "config.cli:config"
+
+[tool.hatch.version]
+path = "src/config/__about__.py"
+
+[tool.hatch.envs.default]
+type = "virtual"
+path = ".venv"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/config tests}"
+
+[tool.coverage.run]
+source_pkgs = ["config", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/config/__about__.py",
+]
+
+[tool.coverage.paths]
+config = ["src/config"]
+tests = ["tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
