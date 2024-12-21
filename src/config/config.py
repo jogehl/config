@@ -74,7 +74,10 @@ def configclass(class_to_register=None,*_args, **_kwargs):
             return property(getter, setter)
 
         for f in dataclasses.fields(class_to_register):
-            if "gt" in f.metadata or "lt" in f.metadata:
+            if ("gt" in f.metadata or 
+                "lt" in f.metadata or 
+                "_in" in f.metadata or 
+                "constraints" in f.metadata):
                 setattr(
                     class_to_register
 
