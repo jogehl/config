@@ -14,7 +14,7 @@ from serde import serde
 
 class ConfigClassRegistry:
     """Registry to hold all registered classes."""
-    
+
     __registry: ClassVar = []  # Class variable to hold the registry
 
     @classmethod
@@ -37,17 +37,36 @@ class ConfigClassRegistry:
         return class_to_register in cls.__registry
 
 
-def configclass(class_to_register=None,*_args, **_kwargs):
-    """Decorate a class to register it in the global registry."""
+def configclass(class_to_register=None, *_args, **_kwargs):
+    """
+    Make a Configclass from a standard class with attributes.
+
+    This decorator adds the following functionality:
+    - Registers the class with Config
+    - Adds a _config_class_type attribute to the class
+    - Convert a to a pyserde class for serialization and deserialization
+    - Adds property methods for fields with constraints which
+    are defined using the config_field decorator.
+
+    Args:
+        class_to_register: The class to register with Config.
+    """
+
     def decorator(class_to_register):
         registry = ConfigClassRegistry()
         registry.register(class_to_register)
 
+        # Add a _config_class_type attribute to the class
+        setattr(
+            class_to_register, "_config_class_type", class_to_register.__name__
+        )
+
         # Add pyserde decorator
         class_to_register = serde(class_to_register)
 
-        def create_property(name, gt=None, lt=None, 
-                            _in=None, constraints=None):
+        def create_property(
+            name, gt=None, lt=None, _in=None, constraints=None
+        ):
             def getter(self):
                 return getattr(self, f"_{name}")
 
@@ -74,14 +93,14 @@ def configclass(class_to_register=None,*_args, **_kwargs):
             return property(getter, setter)
 
         for f in dataclasses.fields(class_to_register):
-            if ("gt" in f.metadata or 
-                "lt" in f.metadata or 
-                "_in" in f.metadata or 
-                "constraints" in f.metadata):
+            if (
+                "gt" in f.metadata
+                or "lt" in f.metadata
+                or "_in" in f.metadata
+                or "constraints" in f.metadata
+            ):
                 setattr(
-                    class_to_register
-
-    ,
+                    class_to_register,
                     f.name,
                     create_property(
                         f.name,
@@ -95,6 +114,7 @@ def configclass(class_to_register=None,*_args, **_kwargs):
         # manipulate docstring so that metadata is included
 
         return class_to_register
+
     if class_to_register is not None:
         return decorator(class_to_register)
     return decorator
