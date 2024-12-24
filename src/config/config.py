@@ -15,26 +15,42 @@ from serde import serde
 class ConfigClassRegistry:
     """Registry to hold all registered classes."""
 
-    __registry: ClassVar = []  # Class variable to hold the registry
+    __registry: ClassVar = {}  # Class variable to hold the registry
+
+    @classmethod
+    def get_class_str_from_class(cls, class_to_register):
+        """Get the class string from a class."""
+        return f"{class_to_register.__module__}.{class_to_register.__name__}"
 
     @classmethod
     def register(cls, class_to_register):
         """Register a class in the global registry."""
         if class_to_register not in cls.__registry:
-            cls.__registry.append(class_to_register)
+            class_str = cls.get_class_str_from_class(class_to_register)
+            cls.__registry[class_str] = class_to_register
         else:
-            exception_msg = f"{class_to_register} is already registered."
+            exception_msg = f"{cls.get_class_str_from_class(class_to_register)} is already registered."
             raise ValueError(exception_msg)
 
     @classmethod
     def list_classes(cls):
         """List all registered classes."""
-        return cls.__registry
+        return list(cls.__registry.keys())
 
     @classmethod
     def is_registered(cls, class_to_register):
         """Check if a class is already registered."""
-        return class_to_register in cls.__registry
+        return (
+            cls.get_class_str_from_class(class_to_register) in cls.__registry
+        )
+
+    @classmethod
+    def get(cls, class_name):
+        """Get a class from the registry by name."""
+        for class_to_register in cls.__registry:
+            if cls.get_class_str_from_class(class_to_register) == class_name:
+                return cls.__registry[class_to_register]
+        raise ValueError(f"{class_name} is not registered.")
 
 
 def configclass(class_to_register=None, *_args, **_kwargs):
@@ -56,10 +72,14 @@ def configclass(class_to_register=None, *_args, **_kwargs):
         registry = ConfigClassRegistry()
         registry.register(class_to_register)
 
-        # Add a _config_class_type attribute to the class
+        # Add a _config_class_type attribute to the class for serialization
+        # Also add the annotation to the class
         setattr(
-            class_to_register, "_config_class_type", class_to_register.__name__
+            class_to_register,
+            "_config_class_type",
+            ConfigClassRegistry.get_class_str_from_class(class_to_register),
         )
+        class_to_register.__annotations__["_config_class_type"] = str
 
         # Add pyserde decorator
         class_to_register = serde(class_to_register)

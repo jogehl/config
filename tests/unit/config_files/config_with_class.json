@@ -1,0 +1,6 @@
+{
+    "test": {
+        "key": "value",
+        "_config_class_type": "test_config_io._TestClassConfigWithConfigClass"
+    }
+}

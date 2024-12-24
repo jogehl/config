@@ -1,0 +1,121 @@
+"""
+The module contains the IO functions.
+
+The IO functions are used to read and write the configuration file.
+"""
+
+from enum import Enum
+
+from serde import to_dict
+from config.config import ConfigClassRegistry  # Import ConfigClassRegistry
+
+
+class ConfigTypes(Enum):
+    """The enumeration of the configuration types."""
+
+    JSON = 1
+    YAML = 2
+    TOML = 3
+
+
+def parse_config(config_file: str, config_type: ConfigTypes):
+    """Parse the configuration file."""
+    config_data_dct = {}
+    match config_type:
+        case ConfigTypes.JSON:
+            config_data_dct = parse_json(config_file)
+        case ConfigTypes.YAML:
+            config_data_dct = parse_yaml(config_file)
+        case ConfigTypes.TOML:
+            config_data_dct = parse_toml(config_file)
+        case _:
+            raise ValueError("The configuration type is not supported.")
+    return construct_config(config_data_dct)
+
+
+def construct_config(config_data: dict):
+    """Construct the configuration objects."""
+    for key, value in config_data.items():
+        if isinstance(value, dict):
+            print("HERE")
+            config_data[key] = construct_config(value)
+        if isinstance(value, list):
+            for i, item in enumerate(value):
+                if isinstance(item, dict):
+                    value[i] = construct_config(item)
+        if isinstance(value, tuple):
+            value = list(value)
+            for i, item in enumerate(value):
+                if isinstance(item, dict):
+                    value[i] = construct_config(item)
+            config_data[key] = tuple(value)
+    if "_config_class_type" in config_data:
+        config_class_type = config_data["_config_class_type"]
+        config_class = ConfigClassRegistry.get(config_class_type)
+        return config_class(**config_data)
+    return config_data
+
+
+def parse_json(config_file: str):
+    """Parse the JSON configuration file."""
+    import json
+
+    with open(config_file, "r") as f:
+        return json.load(f)
+
+
+def parse_yaml(config_file: str):
+    """Parse the YAML configuration file."""
+    with open(config_file, "r") as f:
+        import yaml
+
+        return yaml.load(f, Loader=yaml.FullLoader)
+
+
+def parse_toml(config_file: str):
+    """Parse the TOML configuration file."""
+    import toml
+
+    with open(config_file, "r") as f:
+        return toml.load(f)
+
+
+def write_config(
+    config_file: str, config_data: dict, config_type: ConfigTypes
+):
+    """Write the configuration file."""
+    # try to make the data to a dictionary
+    config_data = to_dict(config_data)
+    match config_type:
+        case ConfigTypes.JSON:
+            write_json(config_file, config_data)
+        case ConfigTypes.YAML:
+            write_yaml(config_file, config_data)
+        case ConfigTypes.TOML:
+            write_toml(config_file, config_data)
+        case _:
+            raise ValueError("The configuration type is not supported.")
+
+
+def write_json(config_file: str, config_data: dict):
+    """Write the JSON configuration file."""
+    import json
+
+    with open(config_file, "w") as f:
+        json.dump(config_data, f, indent=4)
+
+
+def write_yaml(config_file: str, config_data: dict):
+    """Write the YAML configuration file."""
+    import yaml
+
+    with open(config_file, "w") as f:
+        yaml.dump(config_data, f)
+
+
+def write_toml(config_file: str, config_data: dict):
+    """Write the TOML configuration file."""
+    import toml
+
+    with open(config_file, "w") as f:
+        toml.dump(config_data, f)

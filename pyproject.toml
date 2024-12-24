@@ -23,6 +23,8 @@ classifiers = [
 dependencies = [
   "click",
   "pyserde",
+  "toml",
+  "pyaml",
 ]
 
 [project.urls]
