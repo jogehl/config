@@ -29,7 +29,10 @@ class ConfigClassRegistry:
             class_str = cls.get_class_str_from_class(class_to_register)
             cls.__registry[class_str] = class_to_register
         else:
-            exception_msg = f"{cls.get_class_str_from_class(class_to_register)} is already registered."
+            exception_msg = (
+                f"{cls.get_class_str_from_class(class_to_register)} "
+                f"is already registered."
+            )
             raise ValueError(exception_msg)
 
     @classmethod
@@ -48,7 +51,7 @@ class ConfigClassRegistry:
     def get(cls, class_name):
         """Get a class from the registry by name."""
         for class_to_register in cls.__registry:
-            if cls.get_class_str_from_class(class_to_register) == class_name:
+            if class_to_register == class_name:
                 return cls.__registry[class_to_register]
         raise ValueError(f"{class_name} is not registered.")
 

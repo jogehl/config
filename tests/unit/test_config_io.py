@@ -91,11 +91,6 @@ class TestConfigIOMethods(TestCase):
 
     def test_write_config_with_configclass(self):
         """Test writing a configuration file with a ConfigClass."""
-
-        @configclass
-        class _TestClassConfigWithConfigClass:
-            key: str = config_field(default="value")
-
         config_data = {"test": _TestClassConfigWithConfigClass()}
         write_config(
             "tests/unit/config_files/config_with_class.json",
@@ -113,10 +108,15 @@ class TestConfigIOMethods(TestCase):
         self.assertIsInstance(written_data_dct, dict)
         self.assertEqual(written_data_dct["test"]["key"], "value")
 
-    # def test_parse_config_with_configclass(self):
-    #     """Test parsing a configuration file with a ConfigClass."""
-    #     config_data = parse_config(
-    #         "tests/unit/config_files/config_with_class.json", ConfigTypes.JSON
-    #     )
-    #     self.assertIsInstance(config_data, dict)
-    #     self.assertEqual(config_data["test"], "value")
+    def test_parse_config_with_configclass(self):
+        """Test parsing a configuration file with a ConfigClass."""
+        config_data = parse_config(
+            "tests/unit/config_files/config_with_class.json", ConfigTypes.JSON
+        )
+        self.assertIsInstance(config_data, dict)
+        print(config_data)
+        self.assertEqual(config_data["test"].key, "value")
+
+@configclass
+class _TestClassConfigWithConfigClass:
+    key: str = config_field(default="value")

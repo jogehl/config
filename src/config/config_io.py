@@ -37,7 +37,6 @@ def construct_config(config_data: dict):
     """Construct the configuration objects."""
     for key, value in config_data.items():
         if isinstance(value, dict):
-            print("HERE")
             config_data[key] = construct_config(value)
         if isinstance(value, list):
             for i, item in enumerate(value):

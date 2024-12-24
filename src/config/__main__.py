@@ -1,4 +1,5 @@
 """File to run the config module as a script."""
+
 import sys
 
 if __name__ == "__main__":
