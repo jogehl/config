@@ -1,0 +1,24 @@
+[test]
+key = "value"
+list_key = [ "value1", "value2",]
+int_key = 1
+float_key = 1.0
+bool_key = true
+_config_class_type = "test_config_io._TestClassConfigWithConfigClass"
+[[test.list_dict_key]]
+key = "value"
+
+[[test.sub_list_key]]
+key = "value"
+_config_class_type = "test_config_io._TestClassConfigInnerWithConfigClass"
+
+[[test.sub_list_key]]
+key = "value"
+_config_class_type = "test_config_io._TestClassConfigInnerWithConfigClass"
+
+[test.dict_key]
+key = "value"
+
+[test.sub_key]
+key = "value"
+_config_class_type = "test_config_io._TestClassConfigInnerWithConfigClass"

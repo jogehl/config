@@ -1,0 +1,21 @@
+test:
+  _config_class_type: test_config_io._TestClassConfigWithConfigClass
+  bool_key: true
+  dict_key:
+    key: value
+  float_key: 1.0
+  int_key: 1
+  key: value
+  list_dict_key:
+  - key: value
+  list_key:
+  - value1
+  - value2
+  sub_key:
+    _config_class_type: test_config_io._TestClassConfigInnerWithConfigClass
+    key: value
+  sub_list_key:
+  - _config_class_type: test_config_io._TestClassConfigInnerWithConfigClass
+    key: value
+  - _config_class_type: test_config_io._TestClassConfigInnerWithConfigClass
+    key: value

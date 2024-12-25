@@ -148,11 +148,15 @@ def config_field(
     gt=None,
     lt=None,
     default=None,
+    default_factory=None,
     _in: list | None = None,
     constraints: list[Callable[..., bool]] | None = None,
 ):
     """Create a field with constraints."""
     return dataclasses.field(
-        default=default,
+        default=default if default is not None else dataclasses.MISSING,
+        default_factory=default_factory
+        if default_factory is not None
+        else dataclasses.MISSING,
         metadata={"gt": gt, "lt": lt, "_in": _in, "constraints": constraints},
     )

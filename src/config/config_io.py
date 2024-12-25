@@ -5,6 +5,7 @@ The IO functions are used to read and write the configuration file.
 """
 
 from enum import Enum
+from typing import Any
 
 from serde import to_dict
 from config.config import ConfigClassRegistry  # Import ConfigClassRegistry
@@ -33,8 +34,14 @@ def parse_config(config_file: str, config_type: ConfigTypes):
     return construct_config(config_data_dct)
 
 
-def construct_config(config_data: dict):
+def construct_config(config_data: Any):
     """Construct the configuration objects."""
+    # If the configuration data is not a dictionary,
+    if not isinstance(config_data, dict):
+        return config_data
+
+    # Recursively construct the configuration objects
+    # from the configuration dictionary.
     for key, value in config_data.items():
         if isinstance(value, dict):
             config_data[key] = construct_config(value)

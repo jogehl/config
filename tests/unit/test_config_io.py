@@ -89,7 +89,7 @@ class TestConfigIOMethods(TestCase):
 
         self.assertEqual(written_data, '{\n    "key": "value"\n}')
 
-    def test_write_config_with_configclass(self):
+    def test_write_config_with_configclass_json(self):
         """Test writing a configuration file with a ConfigClass."""
         config_data = {"test": _TestClassConfigWithConfigClass()}
         write_config(
@@ -108,15 +108,106 @@ class TestConfigIOMethods(TestCase):
         self.assertIsInstance(written_data_dct, dict)
         self.assertEqual(written_data_dct["test"]["key"], "value")
 
-    def test_parse_config_with_configclass(self):
+    def test_parse_config_with_configclass_json(self):
         """Test parsing a configuration file with a ConfigClass."""
         config_data = parse_config(
             "tests/unit/config_files/config_with_class.json", ConfigTypes.JSON
         )
         self.assertIsInstance(config_data, dict)
-        print(config_data)
         self.assertEqual(config_data["test"].key, "value")
+
+        self.assertIsInstance(
+            config_data["test"].sub_key, _TestClassConfigInnerWithConfigClass
+        )
+        self.assertEqual(config_data["test"].sub_key.key, "value")
+
+    def test_write_config_with_configclass_yaml(self):
+        """Test writing a configuration file with a ConfigClass."""
+        config_data = {"test": _TestClassConfigWithConfigClass()}
+        write_config(
+            "tests/unit/config_files/config_with_class.yaml",
+            config_data,
+            ConfigTypes.YAML,
+        )
+
+        import yaml
+
+        with open("tests/unit/config_files/config_with_class.yaml", "r") as f:
+            written_data = f.read()
+
+        written_data_dct = yaml.safe_load(written_data)
+
+        self.assertIsInstance(written_data_dct, dict)
+        self.assertEqual(written_data_dct["test"]["key"], "value")
+
+    def test_parse_config_with_configclass_yaml(self):
+        """Test parsing a configuration file with a ConfigClass."""
+        config_data = parse_config(
+            "tests/unit/config_files/config_with_class.yaml", ConfigTypes.YAML
+        )
+        self.assertIsInstance(config_data, dict)
+        self.assertEqual(config_data["test"].key, "value")
+
+        self.assertIsInstance(
+            config_data["test"].sub_key, _TestClassConfigInnerWithConfigClass
+        )
+        self.assertEqual(config_data["test"].sub_key.key, "value")
+        
+    def test_write_config_with_configclass_toml(self):
+        """Test writing a configuration file with a ConfigClass."""
+        config_data = {"test": _TestClassConfigWithConfigClass()}
+        write_config(
+            "tests/unit/config_files/config_with_class.toml",
+            config_data,
+            ConfigTypes.TOML,
+        )
+
+        import toml
+
+        with open("tests/unit/config_files/config_with_class.toml", "r") as f:
+            written_data = f.read()
+
+        written_data_dct = toml.loads(written_data)
+
+        self.assertIsInstance(written_data_dct, dict)
+        self.assertEqual(written_data_dct["test"]["key"], "value")
+        
+    def test_parse_config_with_configclass_toml(self):
+        """Test parsing a configuration file with a ConfigClass."""
+        config_data = parse_config(
+            "tests/unit/config_files/config_with_class.toml", ConfigTypes.TOML
+        )
+        self.assertIsInstance(config_data, dict)
+        self.assertEqual(config_data["test"].key, "value")
+
+        self.assertIsInstance(
+            config_data["test"].sub_key, _TestClassConfigInnerWithConfigClass
+        )
+        self.assertEqual(config_data["test"].sub_key.key, "value")
+
+
+@configclass
+class _TestClassConfigInnerWithConfigClass:
+    key: str = config_field(default="value")
+
 
 @configclass
 class _TestClassConfigWithConfigClass:
     key: str = config_field(default="value")
+    list_key: list = config_field(default_factory=lambda: ["value1", "value2"])
+    int_key: int = config_field(default=1)
+    float_key: float = config_field(default=1.0)
+    bool_key: bool = config_field(default=True)
+    dict_key: dict = config_field(default_factory=lambda: {"key": "value"})
+    list_dict_key: list = config_field(
+        default_factory=lambda: [{"key": "value"}]
+    )
+    sub_key: _TestClassConfigInnerWithConfigClass = config_field(
+        default_factory=lambda: _TestClassConfigInnerWithConfigClass()
+    )
+    sub_list_key: list[_TestClassConfigInnerWithConfigClass] = config_field(
+        default_factory=lambda: [
+            _TestClassConfigInnerWithConfigClass(),
+            _TestClassConfigInnerWithConfigClass(),
+        ]
+    )
