@@ -152,7 +152,7 @@ class TestConfigIOMethods(TestCase):
             config_data["test"].sub_key, _TestClassConfigInnerWithConfigClass
         )
         self.assertEqual(config_data["test"].sub_key.key, "value")
-        
+
     def test_write_config_with_configclass_toml(self):
         """Test writing a configuration file with a ConfigClass."""
         config_data = {"test": _TestClassConfigWithConfigClass()}
@@ -171,7 +171,7 @@ class TestConfigIOMethods(TestCase):
 
         self.assertIsInstance(written_data_dct, dict)
         self.assertEqual(written_data_dct["test"]["key"], "value")
-        
+
     def test_parse_config_with_configclass_toml(self):
         """Test parsing a configuration file with a ConfigClass."""
         config_data = parse_config(

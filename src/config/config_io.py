@@ -4,19 +4,11 @@ The module contains the IO functions.
 The IO functions are used to read and write the configuration file.
 """
 
-from enum import Enum
 from typing import Any
 
 from serde import to_dict
 from config.config import ConfigClassRegistry  # Import ConfigClassRegistry
-
-
-class ConfigTypes(Enum):
-    """The enumeration of the configuration types."""
-
-    JSON = 1
-    YAML = 2
-    TOML = 3
+from config.config_types import ConfigTypes
 
 
 def parse_config(config_file: str, config_type: ConfigTypes):
