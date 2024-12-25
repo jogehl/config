@@ -25,7 +25,7 @@ class Configparser:
     def __init__(
         self,
         config_file: str,
-        config_type: ConfigTypes | None=None,
+        config_type: ConfigTypes | None = None,
         autosave: bool = False,
         autoreload: bool = False,
     ):
@@ -73,11 +73,11 @@ class Configparser:
 
     def _auto_reload_config(self):
         """Autoreload the configuration file."""
-        # Check for changes in the configuration file 
+
+        # Check for changes in the configuration file
         def _reload_config():
             new_config_data = parse_config(self.config_file, self.config_type)
             if new_config_data != self.config_data:
                 self.config_data = new_config_data
-       
 
         Timer(1, _reload_config).start()
