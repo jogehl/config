@@ -3,6 +3,8 @@
 import click
 
 from config.__about__ import __version__
+from config.config import ConfigClassRegistry
+from config.utils import import_modules_from_directory
 
 
 @click.group(
@@ -12,4 +14,46 @@ from config.__about__ import __version__
 @click.version_option(version=__version__)
 def config():
     """Run the main entry point for the config CLI."""
-    click.echo("Hello world!")
+    click.echo("Hello to the config CLI!")
+
+
+@config.command()
+@click.option(
+    "--host",
+    "-h",
+    default="localhost",
+    help="The host to run the GUI backend server on.",
+)
+@click.option(
+    "--port",
+    "-p",
+    default=8000,
+    help="The port to run the GUI backend server on.",
+)
+@click.option(
+    "--directory",
+    "-d",
+    default=".",
+    help="The directory to search for configclasses.",
+)
+def start(host, port, directory):
+    """Start the config CLI."""
+    click.echo(
+        "Registering all configclasses in current directory and subfolders..."
+    )
+    # Register all configclasses in the current directory and subfolders
+    # iterate over all files in the current directory and subfolders
+    # and import them to register the configclasses
+    click.echo("Starting the config CLI-GUI...")
+    import_modules_from_directory(directory)
+
+    click.echo(
+        f"These are the registered configclasses: "
+        f"{ConfigClassRegistry.list_classes()}"
+    )
+
+    # Start the GUI backend server here
+    import uvicorn
+    from config.gui_backend.api import app
+
+    uvicorn.run(app, host=host, port=port)

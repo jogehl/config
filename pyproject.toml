@@ -25,6 +25,7 @@ dependencies = [
   "pyserde",
   "toml",
   "pyaml",
+  "fastapi[all]",
 ]
 
 [project.urls]
