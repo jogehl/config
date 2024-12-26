@@ -65,7 +65,7 @@ async def new_session_data(response: Response):
 
 
 # post request which gets the path to the configuration file
-@api_router_v1.post("load-config")
+@api_router_v1.post("/load-config")
 async def load_config(config_path: str, request: Request):
     """Load the configuration from the given path."""
     try:
@@ -76,7 +76,7 @@ async def load_config(config_path: str, request: Request):
     return {"config": config}
 
 
-@api_router_v1.get("get-config-classes")
+@api_router_v1.get("/get-config-classes")
 async def get_config_classes(request: Request):
     """Retrieve the list of configuration classes."""
     classes = ConfigClassRegistry.list_classes()
