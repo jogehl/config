@@ -81,16 +81,15 @@ class Configparser:
                 self.config_data = new_config_data
 
         Timer(1, _reload_config).start()
-        
+
     def __setitem__(self, key, value):
         """Set the value for the given key in the configuration data."""
         self.config_data[key] = value
-        
+
     def __getitem__(self, key):
         """Get the value for the given key in the configuration data."""
         return self.config_data[key]
-    
+
     def __delitem__(self, key):
         """Delete the key from the configuration data."""
         del self.config_data[key]
-    

@@ -1,4 +1,5 @@
 """Test for configparser Class."""
+
 from unittest import TestCase
 
 from config.configparser import Configparser, ConfigTypes
@@ -87,13 +88,13 @@ class TestConfigparser(TestCase):
 
         time.sleep(2)
         self.assertEqual(config.config_data, {"key": "value2"})
-        
+
     def test_get_item(self):
         """Test get item."""
         config = Configparser("tests/unit/config_files/configparser.json")
         self.assertEqual(config["key"], "value")
         self.assertEqual(config.config_data, {"key": "value"})
-        
+
     def test_set_item(self):
         """Test set item."""
         config = Configparser("tests/unit/config_files/configparser.json")
@@ -101,7 +102,7 @@ class TestConfigparser(TestCase):
         self.assertEqual(config.config_data, {"key": "value2"})
         self.assertEqual(config["key"], "value2")
         self.assertEqual(config.config_data, {"key": "value2"})
-        
+
     def test_del_item(self):
         """Test del item."""
         config = Configparser("tests/unit/config_files/configparser.json")
@@ -111,4 +112,3 @@ class TestConfigparser(TestCase):
         with self.assertRaises(KeyError):
             _ = config["key"]
         self.assertEqual(config.config_data, {})
-        
