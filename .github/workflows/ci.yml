@@ -47,6 +47,8 @@ jobs:
           hatch build
   
   increase-version:
+    permissions:
+      contents: write
     needs: build
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.head_commit.message, 'Increase version') && github.ref == 'refs/heads/main' }}
@@ -71,6 +73,8 @@ jobs:
           git push
           git tag -a $(hatch version) -m "Increase version ($(hatch version))"
           git push origin --tags
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     if: contains(github.event.head_commit.message, 'Increase version')
