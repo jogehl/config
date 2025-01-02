@@ -50,6 +50,9 @@ extra-dependencies = [
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:src/config tests}"
 
+[tool.hatch.envs.hatch-static-analysis]
+config-path = "ruff.toml"
+
 [tool.coverage.run]
 source_pkgs = ["config", "tests"]
 branch = true
