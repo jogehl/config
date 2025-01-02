@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from simple_config.gui_backend.session_data import SessionData
+from simple_config_builder.gui_backend.session_data import SessionData
 
 
 class SessionDataTest(TestCase):

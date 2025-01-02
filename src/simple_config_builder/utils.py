@@ -5,7 +5,6 @@ def import_modules_from_directory(directory):
     """Import and check fo @configclass decorator in the given directory."""
     # Iterate over all files and subdirectories in the given directory
     import os
-    import importlib
     import importlib.util
 
     for dirpath, dirnames, filenames in os.walk(directory):
@@ -26,8 +25,13 @@ def import_modules_from_directory(directory):
                         or "import config.config" in content
                     ):
                         # Dynamically import the module
-                        spec = importlib.util.spec_from_file_location(
-                            module_name, module_path
-                        )
-                        module = importlib.util.module_from_spec(spec)
-                        spec.loader.exec_module(module)
+                        try:
+                            spec = importlib.util.spec_from_file_location(
+                                module_name, module_path
+                            )
+                            module = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(module)
+                        except Exception as e:
+                            raise ImportError(
+                                f"Error while importing module {module_name}: {e}"
+                            )

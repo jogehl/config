@@ -3,7 +3,7 @@
 from unittest import TestCase
 from fastapi.testclient import TestClient
 
-from simple_config.gui_backend.api import app
+from simple_config_builder.gui_backend.api import app
 
 
 def test_session():

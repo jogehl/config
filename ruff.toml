@@ -1,4 +1,4 @@
-extend-exclude = ["src/simple_config/__about__.py"]
+extend-exclude = ["src/simple_config_builder/__about__.py"]
 line-length = 79
 
 [lint]

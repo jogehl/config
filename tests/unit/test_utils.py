@@ -2,8 +2,8 @@
 
 from unittest import TestCase
 
-from simple_config.utils import import_modules_from_directory
-from simple_config.config import ConfigClassRegistry
+from simple_config_builder.utils import import_modules_from_directory
+from simple_config_builder.config import ConfigClassRegistry
 
 
 class UtilsTest(TestCase):

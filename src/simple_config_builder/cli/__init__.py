@@ -2,9 +2,9 @@
 
 import click
 
-from simple_config.__about__ import __version__
-from simple_config.config import ConfigClassRegistry
-from simple_config.utils import import_modules_from_directory
+from simple_config_builder.__about__ import __version__
+from simple_config_builder.config import ConfigClassRegistry
+from simple_config_builder.utils import import_modules_from_directory
 
 
 @click.group(
