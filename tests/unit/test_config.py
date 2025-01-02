@@ -3,7 +3,11 @@
 import inspect
 from unittest import TestCase
 
-from simple_config_builder.config import ConfigClassRegistry, config_field, configclass
+from simple_config_builder.config import (
+    ConfigClassRegistry,
+    config_field,
+    configclass,
+)
 
 
 class TestConfig(TestCase):

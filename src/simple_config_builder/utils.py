@@ -33,5 +33,6 @@ def import_modules_from_directory(directory):
                             spec.loader.exec_module(module)
                         except Exception as e:
                             raise ImportError(
-                                f"Error while importing module {module_name}: {e}"
+                                f"Error while importing "
+                                f"module {module_name}: {e}"
                             )
