@@ -4,3 +4,4 @@
 /.vscode
 # exclude all __pycache__ directories
 __pycache__/
+/dist
