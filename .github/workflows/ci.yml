@@ -97,5 +97,5 @@ jobs:
           hatch env create
       - name: Deploy package
         run: |
-          hatch deploy --r test --u __token__ --p ${{ secrets.TEST_PYPI_TOKEN }}
+          hatch deploy -r test --user=__token__ --auth=${{ secrets.TEST_PYPI_TOKEN }}
     
