@@ -9,8 +9,8 @@ objects are updated.
 
 from threading import Timer
 
-from config.config_io import parse_config, write_config
-from config.config_types import ConfigTypes
+from simple_config.config_io import parse_config, write_config
+from simple_config.config_types import ConfigTypes
 
 
 class Configparser:

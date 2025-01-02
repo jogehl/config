@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from config.config_io import (
+from simple_config.config_io import (
     ConfigTypes,
     parse_config,
     write_config,
@@ -13,7 +13,7 @@ from config.config_io import (
     parse_yaml,
     parse_toml,
 )
-from config.config import config_field, configclass
+from simple_config.config import config_field, configclass
 
 
 class TestConfigIOMethods(TestCase):

@@ -2,9 +2,9 @@
 
 import click
 
-from config.__about__ import __version__
-from config.config import ConfigClassRegistry
-from config.utils import import_modules_from_directory
+from simple_config.__about__ import __version__
+from simple_config.config import ConfigClassRegistry
+from simple_config.utils import import_modules_from_directory
 
 
 @click.group(
@@ -54,6 +54,6 @@ def start(host, port, directory):
 
     # Start the GUI backend server here
     import uvicorn
-    from config.gui_backend.api import app
+    from simple_config.gui_backend.api import app
 
     uvicorn.run(app, host=host, port=port)

@@ -1,6 +1,6 @@
 """Test class for the import_modules_from_directory function."""
 
-from config.config import configclass
+from simple_config.config import configclass
 
 
 @configclass

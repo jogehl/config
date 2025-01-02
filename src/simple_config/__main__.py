@@ -3,6 +3,6 @@
 import sys
 
 if __name__ == "__main__":
-    from config.cli import config
+    from simple_config.cli import config
 
     sys.exit(config())

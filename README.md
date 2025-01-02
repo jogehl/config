@@ -1,7 +1,7 @@
 # config
 
-[![PyPI - Version](https://img.shields.io/pypi/v/config.svg)](https://pypi.org/project/config)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/config.svg)](https://pypi.org/project/config)
+[![PyPI - Version](https://img.shields.io/pypi/v/config.svg)](https://test.pypi.org/project/simple-config)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/config.svg)](https://test.pypi.org/project/simple-config)
 
 -----
 

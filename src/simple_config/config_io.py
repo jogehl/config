@@ -7,8 +7,8 @@ The IO functions are used to read and write the configuration file.
 from typing import Any
 
 from serde import to_dict
-from config.config import ConfigClassRegistry  # Import ConfigClassRegistry
-from config.config_types import ConfigTypes
+from simple_config.config import ConfigClassRegistry
+from simple_config.config_types import ConfigTypes
 
 
 def parse_config(config_file: str, config_type: ConfigTypes):

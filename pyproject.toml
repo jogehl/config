@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "config"
+name = "simple_config"
 dynamic = ["version"]
 description = ''
 readme = "README.md"
@@ -34,10 +34,10 @@ Issues = "https://github.com/jogehl/config/issues"
 Source = "https://github.com/jogehl/config"
 
 [project.scripts]
-config = "config.cli:config"
+simple-config = "simple_config.cli:config"
 
 [tool.hatch.version]
-path = "src/config/__about__.py"
+  path = "src/simple_config/__about__.py"
 
 [tool.hatch.envs.default]
 type = "virtual"
@@ -54,15 +54,15 @@ check = "mypy --install-types --non-interactive {args:src/config tests}"
 config-path = "ruff.toml"
 
 [tool.coverage.run]
-source_pkgs = ["config", "tests"]
+source_pkgs = ["simple_config", "tests"]
 branch = true
 parallel = true
 omit = [
-  "src/config/__about__.py",
+  "src/simple_config/__about__.py",
 ]
 
 [tool.coverage.paths]
-config = ["src/config"]
+config = ["src/simple_config"]
 tests = ["tests"]
 
 [tool.coverage.report]

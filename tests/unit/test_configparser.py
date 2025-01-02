@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from config.configparser import Configparser, ConfigTypes
+from simple_config.configparser import Configparser, ConfigTypes
 
 
 class TestConfigparser(TestCase):
