@@ -54,8 +54,7 @@ class ApiTest(TestCase):
         response = self.client.post(
             "/api/v1/load-config",
             params={
-                "config_path": "tests/unit/\
-                    config_files/config_auto_reload.json"
+                "config_path": "tests/unit/config_files/config_auto_reload.json"  # noqa
             },
         )
         assert response.status_code == 200
