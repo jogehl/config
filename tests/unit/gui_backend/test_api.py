@@ -1,3 +1,4 @@
+"""Test the API routes with seesion middleware."""
 from unittest import TestCase
 from fastapi.testclient import TestClient
 
