@@ -85,7 +85,12 @@ jobs:
       name: TESTPYPI
       url: https://test.pypi.org
     steps:
-      - uses: actions/checkout@v2
+      # force a repull of the code to get the newest version from the repo
+      - uses: actions/checkout@v4
+      - run: |
+          git fetch --prune --unshallow
+          git pull origin main
+
       - name: Setup python
         uses: actions/setup-python@v2
         with:
@@ -99,4 +104,6 @@ jobs:
       - name: Deploy package
         run: |
           hatch publish -r test -u __token__ -a ${{ secrets.TEST_PYPI_TOKEN }}
-    
+    env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
