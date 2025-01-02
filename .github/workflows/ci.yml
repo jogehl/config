@@ -3,9 +3,12 @@ on:
   push:
     branches:
       - main
+    tags:
+      - '*'
   pull_request:
     branches:
       - main
+
 
 jobs:
   test:
@@ -51,7 +54,6 @@ jobs:
       contents: write
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.head_commit.message, 'Increase version') && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v2
       - name: Setup python
@@ -77,9 +79,11 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
-    if: contains(github.event.head_commit.message, 'Increase version')
-    needs: build
+    needs: increase-version
     runs-on: ubuntu-latest
+    environment:
+      name: TESTPYPI
+      url: https://test.pypi.org
     steps:
       - uses: actions/checkout@v2
       - name: Setup python
@@ -93,5 +97,5 @@ jobs:
           hatch env create
       - name: Deploy package
         run: |
-          hatch deploy
+          hatch deploy --r test --u __token__ --p ${{ secrets.TEST_PYPI_TOKEN }}
     
