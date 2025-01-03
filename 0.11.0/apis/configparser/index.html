@@ -375,6 +375,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="__getitem__">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.configparser.Configparser.__getitem__--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -557,6 +572,21 @@
       __getitem__
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="__getitem__">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.configparser.Configparser.__getitem__--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -788,7 +818,9 @@ the configuration file when the configuration objects are updated.</p>
 <span class="normal">127</span>
 <span class="normal">128</span>
 <span class="normal">129</span>
-<span class="normal">130</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Configparser</span><span class="p">:</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Configparser</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The Configparser class.</span>
 
@@ -835,7 +867,8 @@ the configuration file when the configuration objects are updated.</p>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the configuration type from the configuration file.</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
 <span class="sd">            The configuration type.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.json&quot;</span><span class="p">):</span>
@@ -887,7 +920,8 @@ the configuration file when the configuration objects are updated.</p>
 <span class="sd">        Params:</span>
 <span class="sd">            key: The key in the configuration data.</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
 <span class="sd">            The value for the key.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
@@ -933,9 +967,9 @@ the configuration file when the configuration objects are updated.</p>
 
             <details class="quote">
               <summary>Source code in <code>src/simple_config_builder/configparser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Delete the key from the configuration data.&quot;&quot;&quot;</span>
     <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
@@ -980,32 +1014,13 @@ the configuration file when the configuration objects are updated.</p>
           </tr>
       </tbody>
     </table>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">RETURNS</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-            </td>
-            <td class="doc-returns-details">
-              <div class="doc-md-description">
-                <p>The value for the key.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
+        <h5 id="simple_config_builder.configparser.Configparser.__getitem__--returns">Returns</h5>
+<pre><code>The value for the key.
+</code></pre>
 
             <details class="quote">
               <summary>Source code in <code>src/simple_config_builder/configparser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">108</span>
-<span class="normal">109</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">109</span>
 <span class="normal">110</span>
 <span class="normal">111</span>
 <span class="normal">112</span>
@@ -1014,14 +1029,17 @@ the configuration file when the configuration objects are updated.</p>
 <span class="normal">115</span>
 <span class="normal">116</span>
 <span class="normal">117</span>
-<span class="normal">118</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get the value for the given key in the configuration data.</span>
 
 <span class="sd">    Params:</span>
 <span class="sd">        key: The key in the configuration data.</span>
 
-<span class="sd">    Returns:</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
 <span class="sd">        The value for the key.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
@@ -1256,15 +1274,15 @@ the configuration file when the configuration objects are updated.</p>
 
             <details class="quote">
               <summary>Source code in <code>src/simple_config_builder/configparser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 98</span>
-<span class="normal"> 99</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 99</span>
 <span class="normal">100</span>
 <span class="normal">101</span>
 <span class="normal">102</span>
 <span class="normal">103</span>
 <span class="normal">104</span>
 <span class="normal">105</span>
-<span class="normal">106</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="normal">106</span>
+<span class="normal">107</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Set the value for the given key in the configuration data.</span>
 
@@ -1294,9 +1312,9 @@ the configuration file when the configuration objects are updated.</p>
 
             <details class="quote">
               <summary>Source code in <code>src/simple_config_builder/configparser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">reload</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">reload</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reload the configuration data from the configuration file.&quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">config_data</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config_file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_type</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -1320,9 +1338,9 @@ the configuration file when the configuration objects are updated.</p>
 
             <details class="quote">
               <summary>Source code in <code>src/simple_config_builder/configparser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Save the configuration data to the configuration file.&quot;&quot;&quot;</span>
     <span class="n">write_config</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config_file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_type</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>

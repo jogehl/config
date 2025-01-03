@@ -345,6 +345,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="get">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.config.ConfigClassRegistry.get--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      Raises
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.config.ConfigClassRegistry.get--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -372,6 +396,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="list_classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.config.ConfigClassRegistry.list_classes--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -380,6 +419,21 @@
       register
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="register">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.config.ConfigClassRegistry.register--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      Raises
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -394,6 +448,21 @@
       config_field
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="config_field">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.config.config_field--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -558,6 +627,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="get">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.config.ConfigClassRegistry.get--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      Raises
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.config.ConfigClassRegistry.get--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -585,6 +678,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="list_classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.config.ConfigClassRegistry.list_classes--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -593,6 +701,21 @@
       register
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="register">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.config.ConfigClassRegistry.register--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      Raises
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -607,6 +730,21 @@
       config_field
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="config_field">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple_config_builder.config.config_field--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -771,7 +909,11 @@
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
 <span class="normal">100</span>
-<span class="normal">101</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ConfigClassRegistry</span><span class="p">:</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ConfigClassRegistry</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Registry to hold all registered classes.&quot;&quot;&quot;</span>
 
     <span class="n">__registry</span><span class="p">:</span> <span class="n">ClassVar</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># Class variable to hold the registry</span>
@@ -805,7 +947,8 @@
 <span class="sd">        Params:</span>
 <span class="sd">            class_to_register: The class to register.</span>
 
-<span class="sd">        Raises:</span>
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
 <span class="sd">            ValueError: If the class is already registered.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">class_to_register</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">__registry</span><span class="p">:</span>
@@ -823,13 +966,14 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        List all registered classes.</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
 <span class="sd">            A list of class strings of all registered classes.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">__registry</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">is_registered</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">class_to_register</span><span class="p">)</span><span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">is_registered</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">class_to_register</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Check if a class is already registered.</span>
 
@@ -848,10 +992,12 @@
 <span class="sd">        Params:</span>
 <span class="sd">            class_name: The name of the class to get.</span>
 
-<span class="sd">        Raises:</span>
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
 <span class="sd">            ValueError: If the class is not registered.</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
 <span class="sd">            The class if it is registered.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">class_to_register</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">__registry</span><span class="p">:</span>
@@ -913,60 +1059,16 @@
           </tr>
       </tbody>
     </table>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">RAISES</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-              <span class="doc-raises-annotation">
-                  <code>ValueError</code>
-              </span>
-            </td>
-            <td class="doc-raises-details">
-              <div class="doc-md-description">
-                <p>If the class is not registered.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">RETURNS</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <span class="doc-returns-annotation">
-                    <code>type</code>
-                </span>
-            </td>
-            <td class="doc-returns-details">
-              <div class="doc-md-description">
-                <p>The class if it is registered.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
+        <h5 id="simple_config_builder.config.ConfigClassRegistry.get--raises">Raises</h5>
+<pre><code>ValueError: If the class is not registered.
+</code></pre>
+<h5 id="simple_config_builder.config.ConfigClassRegistry.get--returns">Returns</h5>
+<pre><code>The class if it is registered.
+</code></pre>
 
             <details class="quote">
               <summary>Source code in <code>src/simple_config_builder/config.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 86</span>
 <span class="normal"> 87</span>
 <span class="normal"> 88</span>
 <span class="normal"> 89</span>
@@ -981,7 +1083,11 @@
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
 <span class="normal">100</span>
-<span class="normal">101</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">class_name</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get a class from the registry by name.</span>
@@ -989,10 +1095,12 @@
 <span class="sd">    Params:</span>
 <span class="sd">        class_name: The name of the class to get.</span>
 
-<span class="sd">    Raises:</span>
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
 <span class="sd">        ValueError: If the class is not registered.</span>
 
-<span class="sd">    Returns:</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
 <span class="sd">        The class if it is registered.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">for</span> <span class="n">class_to_register</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">__registry</span><span class="p">:</span>
@@ -1150,9 +1258,7 @@ get_class_str_from_class(class_to_register)
 
             <details class="quote">
               <summary>Source code in <code>src/simple_config_builder/config.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">74</span>
 <span class="normal">75</span>
 <span class="normal">76</span>
 <span class="normal">77</span>
@@ -1160,8 +1266,10 @@ get_class_str_from_class(class_to_register)
 <span class="normal">79</span>
 <span class="normal">80</span>
 <span class="normal">81</span>
-<span class="normal">82</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
-<span class="k">def</span> <span class="nf">is_registered</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">class_to_register</span><span class="p">)</span><span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="k">def</span> <span class="nf">is_registered</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">class_to_register</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Check if a class is already registered.</span>
 
@@ -1193,47 +1301,28 @@ get_class_str_from_class(class_to_register)
     <div class="doc doc-contents ">
 
         <p>List all registered classes.</p>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">RETURNS</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <span class="doc-returns-annotation">
-                    <code>list[str]</code>
-                </span>
-            </td>
-            <td class="doc-returns-details">
-              <div class="doc-md-description">
-                <p>A list of class strings of all registered classes.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
+<h5 id="simple_config_builder.config.ConfigClassRegistry.list_classes--returns">Returns</h5>
+<pre><code>A list of class strings of all registered classes.
+</code></pre>
 
             <details class="quote">
               <summary>Source code in <code>src/simple_config_builder/config.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">62</span>
-<span class="normal">63</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">63</span>
 <span class="normal">64</span>
 <span class="normal">65</span>
 <span class="normal">66</span>
 <span class="normal">67</span>
 <span class="normal">68</span>
 <span class="normal">69</span>
-<span class="normal">70</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span> <span class="nf">list_classes</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    List all registered classes.</span>
 
-<span class="sd">    Returns:</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
 <span class="sd">        A list of class strings of all registered classes.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">__registry</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
@@ -1287,30 +1376,9 @@ get_class_str_from_class(class_to_register)
           </tr>
       </tbody>
     </table>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">RAISES</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-              <span class="doc-raises-annotation">
-                  <code>ValueError</code>
-              </span>
-            </td>
-            <td class="doc-raises-details">
-              <div class="doc-md-description">
-                <p>If the class is already registered.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
+        <h5 id="simple_config_builder.config.ConfigClassRegistry.register--raises">Raises</h5>
+<pre><code>ValueError: If the class is already registered.
+</code></pre>
 
             <details class="quote">
               <summary>Source code in <code>src/simple_config_builder/config.py</code></summary>
@@ -1333,7 +1401,8 @@ get_class_str_from_class(class_to_register)
 <span class="normal">57</span>
 <span class="normal">58</span>
 <span class="normal">59</span>
-<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">60</span>
+<span class="normal">61</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span> <span class="nf">register</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">class_to_register</span><span class="p">:</span> <span class="nb">type</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Register a class in the global registry.</span>
@@ -1341,7 +1410,8 @@ get_class_str_from_class(class_to_register)
 <span class="sd">    Params:</span>
 <span class="sd">        class_to_register: The class to register.</span>
 
-<span class="sd">    Raises:</span>
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
 <span class="sd">        ValueError: If the class is already registered.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">class_to_register</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">__registry</span><span class="p">:</span>
@@ -1496,38 +1566,13 @@ get_class_str_from_class(class_to_register)
           </tr>
       </tbody>
     </table>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">RETURNS</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <span class="doc-returns-annotation">
-                    <code><span title="dataclasses.Field">Field</span></code>
-                </span>
-            </td>
-            <td class="doc-returns-details">
-              <div class="doc-md-description">
-                <p>A dataclasses.Field object with the constraints.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
+        <h4 id="simple_config_builder.config.config_field--returns">Returns</h4>
+<pre><code>A dataclasses.Field object with the constraints.
+</code></pre>
 
             <details class="quote">
               <summary>Source code in <code>src/simple_config_builder/config.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">195</span>
 <span class="normal">196</span>
 <span class="normal">197</span>
 <span class="normal">198</span>
@@ -1552,7 +1597,12 @@ get_class_str_from_class(class_to_register)
 <span class="normal">217</span>
 <span class="normal">218</span>
 <span class="normal">219</span>
-<span class="normal">220</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">config_field</span><span class="p">(</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">config_field</span><span class="p">(</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">gt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">lt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -1560,7 +1610,7 @@ get_class_str_from_class(class_to_register)
     <span class="n">default_factory</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">_in</span><span class="p">:</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">constraints</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span><span class="o">-&gt;</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">Field</span><span class="p">:</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">Field</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Create a field with constraints.</span>
 
@@ -1572,7 +1622,8 @@ get_class_str_from_class(class_to_register)
 <span class="sd">        _in: A list of valid values for the field.</span>
 <span class="sd">        constraints: A list of constraint functions for the field.</span>
 
-<span class="sd">    Returns:</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
 <span class="sd">        A dataclasses.Field object with the constraints.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
@@ -1641,11 +1692,7 @@ are defined using the config_field decorator.</p>
 
             <details class="quote">
               <summary>Source code in <code>src/simple_config_builder/config.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">108</span>
 <span class="normal">109</span>
 <span class="normal">110</span>
 <span class="normal">111</span>
@@ -1725,7 +1772,11 @@ are defined using the config_field decorator.</p>
 <span class="normal">185</span>
 <span class="normal">186</span>
 <span class="normal">187</span>
-<span class="normal">188</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">configclass</span><span class="p">(</span><span class="n">class_to_register</span><span class="p">:</span> <span class="nb">type</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">_args</span><span class="p">,</span> <span class="o">**</span><span class="n">_kwargs</span><span class="p">):</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">configclass</span><span class="p">(</span><span class="n">class_to_register</span><span class="p">:</span> <span class="nb">type</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">_args</span><span class="p">,</span> <span class="o">**</span><span class="n">_kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Make a Configclass from a standard class with attributes.</span>
 
