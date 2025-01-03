@@ -116,10 +116,13 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
-    needs: build
+    needs: increase-version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - run: |
+          git fetch --prune --unshallow
+          git pull origin main
       - name: Setup python
         uses: actions/setup-python@v2
         with:
