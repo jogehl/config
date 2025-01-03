@@ -103,7 +103,7 @@ jobs:
           hatch build
       - name: Deploy package
         run: |
-          hatch publish -r test -u __token__ -a ${{ secrets.PYPI_TOKEN }}
+          hatch publish -u __token__ -a ${{ secrets.PYPI_TOKEN }}
     env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
