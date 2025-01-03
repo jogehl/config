@@ -2,8 +2,7 @@ name: ConfigCI
 on:
   push:
     branches:
-      - main
-      - docs
+      - '*'
     tags:
       - '*'
   pull_request:
@@ -51,6 +50,8 @@ jobs:
           hatch build
   
   increase-version:
+    # only run on main branch
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
     needs: build
@@ -80,6 +81,8 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
+    # only run on main branch
+    if: github.ref == 'refs/heads/main'
     needs: increase-version
     runs-on: ubuntu-latest
     environment:
@@ -111,7 +114,7 @@ jobs:
   deploy-pages:
     permissions:
       contents: write
-    needs: deploy
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
