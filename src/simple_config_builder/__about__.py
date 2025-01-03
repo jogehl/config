@@ -1,4 +1,4 @@
 # SPDX-FileCopyrightText: 2024-present joshua.gehlen <joshua.gehlen@fkie.fraunhofer.de>
 #
 # SPDX-License-Identifier: MIT
-__version__ = "0.10.0"
+__version__ = "0.11.0"
