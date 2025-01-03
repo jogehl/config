@@ -36,6 +36,7 @@ docs = [
   "mkdocs-material-extensions",
   "mkdocs-autorefs",
   "mkdocs-include-markdown-plugin",
+  "mike",
   ]
 
 
