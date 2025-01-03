@@ -1,8 +1,13 @@
 """Utils for the config module."""
 
 
-def import_modules_from_directory(directory):
-    """Import and check fo @configclass decorator in the given directory."""
+def import_modules_from_directory(directory:str):
+    """
+    Import and check fo @configclass decorator in the given directory.
+
+    Params:
+        directory: str
+    """
     # Iterate over all files and subdirectories in the given directory
     import os
     import importlib.util

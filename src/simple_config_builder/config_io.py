@@ -3,7 +3,6 @@ The module contains the IO functions.
 
 The IO functions are used to read and write the configuration file.
 """
-
 from typing import Any
 
 from serde import to_dict
@@ -11,8 +10,17 @@ from simple_config_builder.config import ConfigClassRegistry
 from simple_config_builder.config_types import ConfigTypes
 
 
-def parse_config(config_file: str, config_type: ConfigTypes):
-    """Parse the configuration file."""
+def parse_config(config_file: str, config_type: ConfigTypes)-> dict:
+    """
+    Parse the configuration file.
+
+    Params:
+        config_file: The configuration file path.
+        config_type: The configuration file type.
+
+    Returns:
+        The configuration dictionary.
+    """
     config_data_dct = {}
     match config_type:
         case ConfigTypes.JSON:
@@ -55,7 +63,15 @@ def construct_config(config_data: Any):
 
 
 def parse_json(config_file: str):
-    """Parse the JSON configuration file."""
+    """
+    Parse the JSON configuration file.
+
+    Params:
+        config_file: The configuration file path.
+
+    Returns:
+        The parsed json data.
+    """
     import json
 
     with open(config_file, "r") as f:
@@ -63,7 +79,15 @@ def parse_json(config_file: str):
 
 
 def parse_yaml(config_file: str):
-    """Parse the YAML configuration file."""
+    """
+    Parse the YAML configuration file.
+
+    Params:
+        config_file: The configuration file path.
+
+    Returns:
+        The parsed yaml data.
+    """
     with open(config_file, "r") as f:
         import yaml
 
@@ -71,7 +95,15 @@ def parse_yaml(config_file: str):
 
 
 def parse_toml(config_file: str):
-    """Parse the TOML configuration file."""
+    """
+    Parse the TOML configuration file.
+
+    Params:
+        config_file: The configuration file path.
+
+    Returns:
+        The parsed toml data.
+    """
     import toml
 
     with open(config_file, "r") as f:
@@ -81,7 +113,14 @@ def parse_toml(config_file: str):
 def write_config(
     config_file: str, config_data: dict, config_type: ConfigTypes
 ):
-    """Write the configuration file."""
+    """
+    Write the configuration file.
+
+    Params:
+        config_file: The configuration file path.
+        config_data: The configuration data.
+        config_type: The configuration file type.
+    """
     # try to make the data to a dictionary
     config_data = to_dict(config_data)
     match config_type:
@@ -96,7 +135,13 @@ def write_config(
 
 
 def write_json(config_file: str, config_data: dict):
-    """Write the JSON configuration file."""
+    """
+    Write the JSON configuration file.
+
+    Params:
+        config_file: The configuration file path.
+        config_data: The configuration data.
+    """
     import json
 
     with open(config_file, "w") as f:
@@ -104,7 +149,13 @@ def write_json(config_file: str, config_data: dict):
 
 
 def write_yaml(config_file: str, config_data: dict):
-    """Write the YAML configuration file."""
+    """
+    Write the YAML configuration file.
+
+    Params:
+        config_file: The configuration file path.
+        config_data: The configuration data.
+    """
     import yaml
 
     with open(config_file, "w") as f:
@@ -112,7 +163,13 @@ def write_yaml(config_file: str, config_data: dict):
 
 
 def write_toml(config_file: str, config_data: dict):
-    """Write the TOML configuration file."""
+    """
+    Write the TOML configuration file.
+
+    Params:
+        config_file: The configuration file path.
+        config_data: The configuration data.
+    """
     import toml
 
     with open(config_file, "w") as f:

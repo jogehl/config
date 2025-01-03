@@ -28,6 +28,18 @@ dependencies = [
   "fastapi[all]",
 ]
 
+[project.optional-dependencies]
+docs = [
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocstrings[python]",
+  "mkdocs-material-extensions",
+  "mkdocs-autorefs",
+  "mkdocs-include-markdown-plugin",
+  ]
+
+
+
 [project.urls]
 Documentation = "https://github.com/jogehl/config#readme"
 Issues = "https://github.com/jogehl/config/issues"
