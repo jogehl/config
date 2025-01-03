@@ -34,7 +34,7 @@ Issues = "https://github.com/jogehl/config/issues"
 Source = "https://github.com/jogehl/config"
 
 [project.scripts]
-simple-config-builder = "simple_config_builder.cli:config"
+simple_config_builder = "simple_config_builder.cli:config"
 
 [tool.hatch.version]
   path = "src/simple_config_builder/__about__.py"

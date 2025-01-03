@@ -1,7 +1,7 @@
 # config
 
-[![PyPI - Version](https://img.shields.io/pypi/v/config.svg)](https://pypi.org/project/simple-config-builder)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/config.svg)](https://pypi.org/project/simple-config-builder)
+[![PyPI - Version](https://img.shields.io/pypi/v/config.svg)](https://pypi.org/project/simple_config_builder)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/config.svg)](https://pypi.org/project/simple_config_builder)
 
 -----
 
@@ -13,9 +13,9 @@
 ## Installation
 
 ```console
-pip install simple-config-builder
+pip install simple_config_builder
 ```
 
 ## License
 
-`simple-config-builder` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
+`simple_config_builder` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
