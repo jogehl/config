@@ -29,7 +29,15 @@ class Configparser:
         autosave: bool = False,
         autoreload: bool = False,
     ):
-        """Initialize the configparser."""
+        """
+        Initialize the configparser.
+
+        Params:
+            config_file: The configuration file path.
+            config_type: The configuration type. Defaults to None.
+            autosave: Autosave the configuration file. Defaults to False.
+            autoreload: Autoreload the configuration file. Defaults to False.
+        """
         self.config_file = config_file
         self.config_type = config_type
         self.autosave = autosave
@@ -49,7 +57,13 @@ class Configparser:
             self._auto_save_config()
 
     def _get_config_type(self) -> ConfigTypes:
-        """Get the configuration type from the configuration file."""
+        """
+        Get the configuration type from the configuration file.
+
+        Returns
+        -------
+            The configuration type.
+        """
         if self.config_file.endswith(".json"):
             return ConfigTypes.JSON
         if self.config_file.endswith(".yaml"):
@@ -83,13 +97,36 @@ class Configparser:
         Timer(1, _reload_config).start()
 
     def __setitem__(self, key, value):
-        """Set the value for the given key in the configuration data."""
+        """
+        Set the value for the given key in the configuration data.
+
+        Params:
+            key: The key in the configuration data.
+            value: The value to set for the key.
+        """
         self.config_data[key] = value
 
     def __getitem__(self, key):
-        """Get the value for the given key in the configuration data."""
+        """
+        Get the value for the given key in the configuration data.
+
+        Params:
+            key: The key in the configuration data.
+
+        Returns
+        -------
+            The value for the key.
+        """
         return self.config_data[key]
 
     def __delitem__(self, key):
         """Delete the key from the configuration data."""
         del self.config_data[key]
+
+    def save(self):
+        """Save the configuration data to the configuration file."""
+        write_config(self.config_file, self.config_data, self.config_type)
+
+    def reload(self):
+        """Reload the configuration data from the configuration file."""
+        self.config_data = parse_config(self.config_file, self.config_type)

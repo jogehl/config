@@ -1,0 +1,32 @@
+site_name: Simple Config Builder
+
+nav:
+    - Home: index.md
+    - License: license.md
+    - API:
+        - Config: apis/config.md
+        - Configparser: apis/configparser.md
+        - Config Types: apis/config_types.md
+        - Config IO: apis/config_io.md
+        - Utils: apis/utils.md
+
+
+theme: material
+plugins:
+    - search
+    - autorefs
+    - mkdocstrings:
+        default_handler: python
+        handlers:
+            python:
+                options:
+                    paths: ["src"]
+                    docstring_style: google
+                    docstring_section_style: spacy
+                    show_type_annotations: true
+                    show_signature: false
+    - include-markdown
+    - mike
+extra:
+    version:
+        provider: mike

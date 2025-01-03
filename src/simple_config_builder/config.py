@@ -18,13 +18,38 @@ class ConfigClassRegistry:
     __registry: ClassVar = {}  # Class variable to hold the registry
 
     @classmethod
-    def get_class_str_from_class(cls, class_to_register):
-        """Get the class string from a class."""
+    def get_class_str_from_class(cls, class_to_register: type):
+        """
+        Get the class string from a class.
+
+        The class string is the module and class name of the
+        class separated by a dot.
+
+        Example:
+            ```
+            class_to_register = MyClass
+            get_class_str_from_class(class_to_register)
+            # Returns: "mymodule.MyClass"
+            ```
+
+
+        Params:
+            class_to_register: The class to get the class string from.
+        """
         return f"{class_to_register.__module__}.{class_to_register.__name__}"
 
     @classmethod
-    def register(cls, class_to_register):
-        """Register a class in the global registry."""
+    def register(cls, class_to_register: type):
+        """
+        Register a class in the global registry.
+
+        Params:
+            class_to_register: The class to register.
+
+        Raises
+        ------
+            ValueError: If the class is already registered.
+        """
         if class_to_register not in cls.__registry:
             class_str = cls.get_class_str_from_class(class_to_register)
             cls.__registry[class_str] = class_to_register
@@ -36,27 +61,51 @@ class ConfigClassRegistry:
             raise ValueError(exception_msg)
 
     @classmethod
-    def list_classes(cls):
-        """List all registered classes."""
+    def list_classes(cls) -> list[str]:
+        """
+        List all registered classes.
+
+        Returns
+        -------
+            A list of class strings of all registered classes.
+        """
         return list(cls.__registry.keys())
 
     @classmethod
-    def is_registered(cls, class_to_register):
-        """Check if a class is already registered."""
+    def is_registered(cls, class_to_register) -> bool:
+        """
+        Check if a class is already registered.
+
+        Params:
+            class_to_register: The class to check.
+        """
         return (
             cls.get_class_str_from_class(class_to_register) in cls.__registry
         )
 
     @classmethod
-    def get(cls, class_name):
-        """Get a class from the registry by name."""
+    def get(cls, class_name) -> type:
+        """
+        Get a class from the registry by name.
+
+        Params:
+            class_name: The name of the class to get.
+
+        Raises
+        ------
+            ValueError: If the class is not registered.
+
+        Returns
+        -------
+            The class if it is registered.
+        """
         for class_to_register in cls.__registry:
             if class_to_register == class_name:
                 return cls.__registry[class_to_register]
         raise ValueError(f"{class_name} is not registered.")
 
 
-def configclass(class_to_register=None, *_args, **_kwargs):
+def configclass(class_to_register: type = None, *_args, **_kwargs):
     """
     Make a Configclass from a standard class with attributes.
 
@@ -67,7 +116,7 @@ def configclass(class_to_register=None, *_args, **_kwargs):
     - Adds property methods for fields with constraints which
     are defined using the config_field decorator.
 
-    Args:
+    Params:
         class_to_register: The class to register with Config.
     """
 
@@ -151,8 +200,22 @@ def config_field(
     default_factory=None,
     _in: list | None = None,
     constraints: list[Callable[..., bool]] | None = None,
-):
-    """Create a field with constraints."""
+) -> dataclasses.Field:
+    """
+    Create a field with constraints.
+
+    Params:
+        gt: The minimum value of the field.
+        lt: The maximum value of the field.
+        default: The default value of the field.
+        default_factory: The default factory of the field.
+        _in: A list of valid values for the field.
+        constraints: A list of constraint functions for the field.
+
+    Returns
+    -------
+        A dataclasses.Field object with the constraints.
+    """
     return dataclasses.field(
         default=default if default is not None else dataclasses.MISSING,
         default_factory=default_factory
