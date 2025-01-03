@@ -112,6 +112,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy-pages:
+    # only run on main branch
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
     needs: build
