@@ -1,7 +1,7 @@
 """Utils for the config module."""
 
 
-def import_modules_from_directory(directory:str):
+def import_modules_from_directory(directory: str):
     """
     Import and check fo @configclass decorator in the given directory.
 

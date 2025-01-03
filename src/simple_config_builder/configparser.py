@@ -60,7 +60,8 @@ class Configparser:
         """
         Get the configuration type from the configuration file.
 
-        Returns:
+        Returns
+        -------
             The configuration type.
         """
         if self.config_file.endswith(".json"):
@@ -112,7 +113,8 @@ class Configparser:
         Params:
             key: The key in the configuration data.
 
-        Returns:
+        Returns
+        -------
             The value for the key.
         """
         return self.config_data[key]

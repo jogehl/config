@@ -46,7 +46,8 @@ class ConfigClassRegistry:
         Params:
             class_to_register: The class to register.
 
-        Raises:
+        Raises
+        ------
             ValueError: If the class is already registered.
         """
         if class_to_register not in cls.__registry:
@@ -64,13 +65,14 @@ class ConfigClassRegistry:
         """
         List all registered classes.
 
-        Returns:
+        Returns
+        -------
             A list of class strings of all registered classes.
         """
         return list(cls.__registry.keys())
 
     @classmethod
-    def is_registered(cls, class_to_register)-> bool:
+    def is_registered(cls, class_to_register) -> bool:
         """
         Check if a class is already registered.
 
@@ -89,10 +91,12 @@ class ConfigClassRegistry:
         Params:
             class_name: The name of the class to get.
 
-        Raises:
+        Raises
+        ------
             ValueError: If the class is not registered.
 
-        Returns:
+        Returns
+        -------
             The class if it is registered.
         """
         for class_to_register in cls.__registry:
@@ -196,7 +200,7 @@ def config_field(
     default_factory=None,
     _in: list | None = None,
     constraints: list[Callable[..., bool]] | None = None,
-)-> dataclasses.Field:
+) -> dataclasses.Field:
     """
     Create a field with constraints.
 
@@ -208,7 +212,8 @@ def config_field(
         _in: A list of valid values for the field.
         constraints: A list of constraint functions for the field.
 
-    Returns:
+    Returns
+    -------
         A dataclasses.Field object with the constraints.
     """
     return dataclasses.field(

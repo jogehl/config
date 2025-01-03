@@ -3,6 +3,7 @@ The module contains the IO functions.
 
 The IO functions are used to read and write the configuration file.
 """
+
 from typing import Any
 
 from serde import to_dict
@@ -10,7 +11,7 @@ from simple_config_builder.config import ConfigClassRegistry
 from simple_config_builder.config_types import ConfigTypes
 
 
-def parse_config(config_file: str, config_type: ConfigTypes)-> dict:
+def parse_config(config_file: str, config_type: ConfigTypes) -> dict:
     """
     Parse the configuration file.
 
@@ -18,7 +19,8 @@ def parse_config(config_file: str, config_type: ConfigTypes)-> dict:
         config_file: The configuration file path.
         config_type: The configuration file type.
 
-    Returns:
+    Returns
+    -------
         The configuration dictionary.
     """
     config_data_dct = {}
@@ -69,7 +71,8 @@ def parse_json(config_file: str):
     Params:
         config_file: The configuration file path.
 
-    Returns:
+    Returns
+    -------
         The parsed json data.
     """
     import json
@@ -85,7 +88,8 @@ def parse_yaml(config_file: str):
     Params:
         config_file: The configuration file path.
 
-    Returns:
+    Returns
+    -------
         The parsed yaml data.
     """
     with open(config_file, "r") as f:
@@ -101,7 +105,8 @@ def parse_toml(config_file: str):
     Params:
         config_file: The configuration file path.
 
-    Returns:
+    Returns
+    -------
         The parsed toml data.
     """
     import toml
