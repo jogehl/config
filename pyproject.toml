@@ -42,7 +42,7 @@ docs = [
 
 
 [project.urls]
-Documentation = "https://github.com/jogehl/config#readme"
+Documentation = "https://jogehl.github.io/config"
 Issues = "https://github.com/jogehl/config/issues"
 Source = "https://github.com/jogehl/config"
 
