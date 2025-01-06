@@ -142,7 +142,7 @@ class TestConfig(TestCase):
         @configclass
         class K:
             value1: int = config_field(
-                constraints=[lambda x: x % 2 == 0], default=2
+                validators=[lambda x: x % 2 == 0], default=2
             )
 
         c = K()

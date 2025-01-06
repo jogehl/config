@@ -137,7 +137,7 @@ def configclass(class_to_register: type = None, *_args, **_kwargs):
         class_to_register = serde(class_to_register)
 
         def create_property(
-            name, gt=None, lt=None, _in=None, constraints=None
+            name, gt=None, lt=None, _in=None, validators=None
         ):
             def getter(self):
                 return getattr(self, f"_{name}")
@@ -152,12 +152,12 @@ def configclass(class_to_register: type = None, *_args, **_kwargs):
                 if _in is not None and value not in _in:
                     exception_message = f"{name} must be in {_in}"
                     raise ValueError(exception_message)
-                if constraints is not None:
-                    for constraint in constraints:
+                if validators is not None:
+                    for constraint in validators:
                         if not constraint(value):
                             exception_message = (
                                 f"{name} does not satisfy the "
-                                f"constraint {constraint}"
+                                f"validator {constraint}"
                             )
                             raise ValueError(exception_message)
                 setattr(self, f"_{name}", value)
@@ -169,7 +169,7 @@ def configclass(class_to_register: type = None, *_args, **_kwargs):
                 "gt" in f.metadata
                 or "lt" in f.metadata
                 or "_in" in f.metadata
-                or "constraints" in f.metadata
+                or "validators" in f.metadata
             ):
                 setattr(
                     class_to_register,
@@ -179,7 +179,7 @@ def configclass(class_to_register: type = None, *_args, **_kwargs):
                         f.metadata.get("gt"),
                         f.metadata.get("lt"),
                         f.metadata.get("_in"),
-                        f.metadata.get("constraints"),
+                        f.metadata.get("validators"),
                     ),
                 )
 
@@ -199,7 +199,7 @@ def config_field(
     default=None,
     default_factory=None,
     _in: list | None = None,
-    constraints: list[Callable[..., bool]] | None = None,
+    validators: list[Callable[..., bool]] | None = None,
 ) -> dataclasses.Field:
     """
     Create a field with constraints.
@@ -221,5 +221,5 @@ def config_field(
         default_factory=default_factory
         if default_factory is not None
         else dataclasses.MISSING,
-        metadata={"gt": gt, "lt": lt, "_in": _in, "constraints": constraints},
+        metadata={"gt": gt, "lt": lt, "_in": _in, "validators": validators},
     )
