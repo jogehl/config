@@ -32,11 +32,12 @@ class Configparser:
         """
         Initialize the configparser.
 
-        Params:
-            config_file: The configuration file path.
-            config_type: The configuration type. Defaults to None.
-            autosave: Autosave the configuration file. Defaults to False.
-            autoreload: Autoreload the configuration file. Defaults to False.
+        Parameters
+        ----------
+        config_file: The configuration file path.
+        config_type: The configuration type. Defaults to None.
+        autosave: Autosave the configuration file. Defaults to False.
+        autoreload: Autoreload the configuration file. Defaults to False.
         """
         self.config_file = config_file
         self.config_type = config_type
@@ -100,9 +101,10 @@ class Configparser:
         """
         Set the value for the given key in the configuration data.
 
-        Params:
-            key: The key in the configuration data.
-            value: The value to set for the key.
+        Parameters
+        ----------
+        key: The key in the configuration data.
+        value: The value to set for the key.
         """
         self.config_data[key] = value
 
@@ -110,12 +112,13 @@ class Configparser:
         """
         Get the value for the given key in the configuration data.
 
-        Params:
-            key: The key in the configuration data.
+        Parameters
+        ----------
+        key: The key in the configuration data.
 
         Returns
         -------
-            The value for the key.
+        The value for the key.
         """
         return self.config_data[key]
 

@@ -33,8 +33,9 @@ class ConfigClassRegistry:
             ```
 
 
-        Params:
-            class_to_register: The class to get the class string from.
+        Parameters
+        ----------
+        class_to_register: The class to get the class string from.
         """
         return f"{class_to_register.__module__}.{class_to_register.__name__}"
 
@@ -43,12 +44,13 @@ class ConfigClassRegistry:
         """
         Register a class in the global registry.
 
-        Params:
-            class_to_register: The class to register.
+        Parameters
+        ----------
+        class_to_register: The class to register.
 
         Raises
         ------
-            ValueError: If the class is already registered.
+        ValueError: If the class is already registered.
         """
         if class_to_register not in cls.__registry:
             class_str = cls.get_class_str_from_class(class_to_register)
@@ -67,7 +69,7 @@ class ConfigClassRegistry:
 
         Returns
         -------
-            A list of class strings of all registered classes.
+        A list of class strings of all registered classes.
         """
         return list(cls.__registry.keys())
 
@@ -76,8 +78,9 @@ class ConfigClassRegistry:
         """
         Check if a class is already registered.
 
-        Params:
-            class_to_register: The class to check.
+        Parameters
+        ----------
+        class_to_register: The class to check.
         """
         return (
             cls.get_class_str_from_class(class_to_register) in cls.__registry
@@ -88,16 +91,17 @@ class ConfigClassRegistry:
         """
         Get a class from the registry by name.
 
-        Params:
-            class_name: The name of the class to get.
+        Parameters
+        ----------
+        class_name: The name of the class to get.
 
         Raises
         ------
-            ValueError: If the class is not registered.
+        ValueError: If the class is not registered.
 
         Returns
         -------
-            The class if it is registered.
+        The class if it is registered.
         """
         for class_to_register in cls.__registry:
             if class_to_register == class_name:
@@ -116,8 +120,9 @@ def configclass(class_to_register: type = None, *_args, **_kwargs):
     - Adds property methods for fields with constraints which
     are defined using the config_field decorator.
 
-    Params:
-        class_to_register: The class to register with Config.
+    Parameters
+    ----------
+    class_to_register: The class to register with Config.
     """
 
     def decorator(class_to_register):
@@ -202,17 +207,18 @@ def config_field(
     """
     Create a field with constraints.
 
-    Params:
-        gt: The minimum value of the field.
-        lt: The maximum value of the field.
-        default: The default value of the field.
-        default_factory: The default factory of the field.
-        _in: A list of valid values for the field.
-        validators: A list of validator functions for the field.
+    Parameters
+    ----------
+    gt: The minimum value of the field.
+    lt: The maximum value of the field.
+    default: The default value of the field.
+    default_factory: The default factory of the field.
+    _in: A list of valid values for the field.
+    validators: A list of validator functions for the field.
 
     Returns
     -------
-        A dataclasses.Field object with the constraints.
+    A dataclasses.Field object with the constraints.
     """
     return dataclasses.field(
         default=default if default is not None else dataclasses.MISSING,

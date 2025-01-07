@@ -5,8 +5,9 @@ def import_modules_from_directory(directory: str):
     """
     Import and check fo @configclass decorator in the given directory.
 
-    Params:
-        directory: str
+    Parameters
+    ----------
+    directory: str
     """
     # Iterate over all files and subdirectories in the given directory
     import os

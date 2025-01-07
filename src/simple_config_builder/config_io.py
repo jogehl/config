@@ -15,13 +15,14 @@ def parse_config(config_file: str, config_type: ConfigTypes) -> dict:
     """
     Parse the configuration file.
 
-    Params:
-        config_file: The configuration file path.
-        config_type: The configuration file type.
+    Parameters
+    ----------
+    config_file: The configuration file path.
+    config_type: The configuration file type.
 
     Returns
     -------
-        The configuration dictionary.
+    The configuration dictionary.
     """
     config_data_dct = {}
     match config_type:
@@ -68,12 +69,13 @@ def parse_json(config_file: str):
     """
     Parse the JSON configuration file.
 
-    Params:
-        config_file: The configuration file path.
+    Parameters
+    ----------
+    config_file: The configuration file path.
 
     Returns
     -------
-        The parsed json data.
+    The parsed json data.
     """
     import json
 
@@ -85,12 +87,13 @@ def parse_yaml(config_file: str):
     """
     Parse the YAML configuration file.
 
-    Params:
-        config_file: The configuration file path.
+    Parameters
+    ----------
+    config_file: The configuration file path.
 
     Returns
     -------
-        The parsed yaml data.
+    The parsed yaml data.
     """
     with open(config_file, "r") as f:
         import yaml
@@ -102,12 +105,13 @@ def parse_toml(config_file: str):
     """
     Parse the TOML configuration file.
 
-    Params:
-        config_file: The configuration file path.
+    Parameters
+    ----------
+    config_file: The configuration file path.
 
     Returns
     -------
-        The parsed toml data.
+    The parsed toml data.
     """
     import toml
 
@@ -121,10 +125,11 @@ def write_config(
     """
     Write the configuration file.
 
-    Params:
-        config_file: The configuration file path.
-        config_data: The configuration data.
-        config_type: The configuration file type.
+    Parameters
+    ----------
+    config_file: The configuration file path.
+    config_data: The configuration data.
+    config_type: The configuration file type.
     """
     # try to make the data to a dictionary
     config_data = to_dict(config_data)
@@ -143,9 +148,10 @@ def write_json(config_file: str, config_data: dict):
     """
     Write the JSON configuration file.
 
-    Params:
-        config_file: The configuration file path.
-        config_data: The configuration data.
+    Parameters
+    ----------
+    config_file: The configuration file path.
+    config_data: The configuration data.
     """
     import json
 
@@ -157,9 +163,10 @@ def write_yaml(config_file: str, config_data: dict):
     """
     Write the YAML configuration file.
 
-    Params:
-        config_file: The configuration file path.
-        config_data: The configuration data.
+    Parameters
+    ----------
+    config_file: The configuration file path.
+    config_data: The configuration data.
     """
     import yaml
 
@@ -171,9 +178,10 @@ def write_toml(config_file: str, config_data: dict):
     """
     Write the TOML configuration file.
 
-    Params:
-        config_file: The configuration file path.
-        config_data: The configuration data.
+    Parameters
+    ----------
+    config_file: The configuration file path.
+    config_data: The configuration data.
     """
     import toml
 
