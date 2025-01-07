@@ -210,10 +210,9 @@ def config_field(
         default: The default value of the field.
         default_factory: The default factory of the field.
         _in: A list of valid values for the field.
-        constraints: A list of constraint functions for the field.
+        validators: A list of validator functions for the field.
 
     Returns
-    -------
         A dataclasses.Field object with the constraints.
     """
     return dataclasses.field(
