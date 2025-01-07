@@ -136,9 +136,7 @@ def configclass(class_to_register: type = None, *_args, **_kwargs):
         # Add pyserde decorator
         class_to_register = serde(class_to_register)
 
-        def create_property(
-            name, gt=None, lt=None, _in=None, validators=None
-        ):
+        def create_property(name, gt=None, lt=None, _in=None, validators=None):
             def getter(self):
                 return getattr(self, f"_{name}")
 
@@ -213,6 +211,7 @@ def config_field(
         validators: A list of validator functions for the field.
 
     Returns
+    -------
         A dataclasses.Field object with the constraints.
     """
     return dataclasses.field(
