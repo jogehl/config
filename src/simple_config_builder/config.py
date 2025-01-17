@@ -218,6 +218,9 @@ def config_field(
     default_factory: The default factory of the field.
     _in: A list of valid values for the field.
     validators: A list of validator functions for the field.
+    serializer: A serializer function for the field.
+    deserializer: A deserializer function for the field.
+    alias: An alias for the field.
 
     Returns
     -------
