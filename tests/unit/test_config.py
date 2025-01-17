@@ -1,7 +1,9 @@
 """Tests for config module."""
 
 import inspect
+from datetime import datetime
 from unittest import TestCase
+from serde.json import to_json, from_json
 
 from simple_config_builder.config import (
     ConfigClassRegistry,
@@ -163,6 +165,24 @@ class TestConfig(TestCase):
             c.value1 = -1
         with self.assertRaises(ValueError):
             c.value1 = 11
+
+    def test_custom_seriallizer(self):
+        """Test custom serializer."""
+
+        @configclass
+        class M:
+            value1: datetime = config_field(
+                serializer=lambda x: x.strftime("%d/%m/%y"),
+                deserializer=lambda x: datetime.strptime(x, "%d/%m/%y"),
+            )
+
+        dt = datetime(2020, 1, 1)
+        c = M(value1=dt)
+        json = to_json(c)
+        self.assertIn('"value1":"01/01/20"', json)
+
+        c = from_json(M, json)
+        self.assertEqual(c.value1, dt)
 
     def test_type_attribute_is_added(self):
         """Test that the type attribute is added to the class."""

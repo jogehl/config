@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import ClassVar
 
-from serde import serde
+from serde import serde, field as serde_field
 
 
 class ConfigClassRegistry:
@@ -203,6 +203,9 @@ def config_field(
     default_factory=None,
     _in: list | None = None,
     validators: list[Callable[..., bool]] | None = None,
+    serializer: Callable[..., any] | None = None,
+    deserializer: Callable[..., any] | None = None,
+    alias: str | None = None,
 ) -> dataclasses.Field:
     """
     Create a field with constraints.
@@ -220,10 +223,13 @@ def config_field(
     -------
     A dataclasses.Field object with the constraints.
     """
-    return dataclasses.field(
+    return serde_field(
         default=default if default is not None else dataclasses.MISSING,
         default_factory=default_factory
         if default_factory is not None
         else dataclasses.MISSING,
+        serializer=serializer,
+        deserializer=deserializer,
+        alias=alias,
         metadata={"gt": gt, "lt": lt, "_in": _in, "validators": validators},
     )
