@@ -3,14 +3,68 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING
+import importlib.util
+import os
+from plum import dispatch
+from typing import TYPE_CHECKING, Type
+from collections.abc import Callable
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from typing import ClassVar
-
 from serde import serde, field as serde_field
 
+class __CallableSerializer:
+    @dispatch
+    def serialize(self, obj: Callable) -> dict[str, str]:
+        # check if the function is in the python path
+        try:
+            _ = __import__(obj.__module__)
+        except Exception:
+            # get the file path of the function
+            file_path = os.path.abspath(obj.__code__.co_filename)
+            return {
+                "module": obj.__module__,
+                "function": obj.__name__,
+                "file_path": file_path
+            }
+        return {
+            "module": obj.__module__,
+            "function": obj.__name__,
+            "file_path": ""
+        }
+
+
+class __CallableDeserializer:
+    @dispatch
+    def deserialize(
+            self,
+            cls: Type[Callable],
+            obj: dict[str, str]) -> Callable:
+        # get the module and function name
+        module_name = obj["module"]
+        function_name = obj["function"]
+        file_path = obj["file_path"] if "file_path" in obj else ""
+        # check if the function is in the python path
+        if file_path == "":
+            spec = importlib.util.find_spec(module_name)
+            if spec is None:
+                raise ImportError(f"Module {module_name} not found")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return getattr(module, function_name)
+        else:
+            spec = (importlib.util.spec_from_file_location
+                    (module_name, file_path))
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            if not hasattr(module, function_name):
+                raise AttributeError(
+                    f"Function {function_name} not "
+                    f"found in module {module_name}")
+
+            # get the function
+            return getattr(module, function_name)
 
 class ConfigClassRegistry:
     """Registry to hold all registered classes."""
@@ -139,7 +193,11 @@ def configclass(class_to_register: type = None, *_args, **_kwargs):
         class_to_register.__annotations__["_config_class_type"] = str
 
         # Add pyserde decorator
-        class_to_register = serde(class_to_register)
+        class_to_register = serde(
+            class_to_register,
+        class_serializer=__CallableSerializer(),
+        class_deserializer=__CallableDeserializer()
+        )
 
         def create_property(name, gt=None, lt=None, _in=None, validators=None):
             def getter(self):
