@@ -1,7 +1,13 @@
 """Tests for config module."""
-
+import dis
+import importlib.util
 import inspect
+import logging
+import os
+from collections.abc import Callable
+from datetime import datetime
 from unittest import TestCase
+from serde.json import to_json, from_json
 
 from simple_config_builder.config import (
     ConfigClassRegistry,
@@ -164,6 +170,24 @@ class TestConfig(TestCase):
         with self.assertRaises(ValueError):
             c.value1 = 11
 
+    def test_custom_serializer(self):
+        """Test custom serializer."""
+
+        @configclass
+        class M:
+            value1: datetime = config_field(
+                serializer=lambda x: x.strftime("%d/%m/%y"),
+                deserializer=lambda x: datetime.strptime(x, "%d/%m/%y"),
+            )
+
+        dt = datetime(2020, 1, 1)
+        c = M(value1=dt)
+        json = to_json(c)
+        self.assertIn('"value1":"01/01/20"', json)
+
+        c = from_json(M, json)
+        self.assertEqual(c.value1, dt)
+
     def test_type_attribute_is_added(self):
         """Test that the type attribute is added to the class."""
 
@@ -173,3 +197,54 @@ class TestConfig(TestCase):
 
         self.assertEqual(M._config_class_type, "test_config.M")
         inspect.getmembers(M)
+
+
+    def test_callable_type(self):
+        """Test that the type attribute is added to the class."""
+
+        @configclass
+        class N:
+            func1: Callable
+
+        n = N(func1=fun)
+        self.assertEqual(n.func1.__code__, fun.__code__)
+
+        json = to_json(n)
+        n = from_json(N, json)
+        self.assertEqual(fun.__code__, n.func1.__code__)
+
+    def test_callable_type_from_other_file(self):
+        """Test that the type attribute is added to the class."""
+        from os.path import dirname
+
+        # import function from external module for testing
+        current_file_location = __file__
+        current_file_path = dirname(current_file_location)
+        pacakge_file_path = dirname(dirname(current_file_path))
+        external_file_location = os.path.join(
+            pacakge_file_path, "external_func_for_testing.py")
+        # make path to external file
+        spec = importlib.util.spec_from_file_location(
+            "external_func_for_testing", external_file_location)
+        external_func = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(external_func)
+        func = getattr(external_func, "fun")
+
+        @configclass
+        class OClass:
+            func1: Callable
+
+        n = OClass(func1=func)
+        logging.error(dis.dis(func))
+        logging.error(dis.dis(n.func1))
+        self.assertEqual(dis.dis(func), dis.dis(n.func1))
+
+
+        json = to_json(n)
+        logging.error(json)
+        n = from_json(OClass, json)
+        self.assertEqual(func.__code__, n.func1.__code__)
+
+def fun():
+    """Test function."""
+    return True
