@@ -5,11 +5,18 @@ from __future__ import annotations
 import dataclasses
 import importlib.util
 import os
-import typing
 
 from plum import dispatch
 from serde.core import ClassSerializer, ClassDeserializer
-from typing import TYPE_CHECKING, Type, Protocol, runtime_checkable, dataclass_transform, Any, cast
+from typing import (
+    TYPE_CHECKING,
+    Type,
+    Protocol,
+    runtime_checkable,
+    dataclass_transform,
+    Any,
+    cast,
+)
 from collections.abc import Callable
 
 if TYPE_CHECKING:
@@ -17,9 +24,10 @@ if TYPE_CHECKING:
 from serde import serde, field as serde_field
 
 
-
 @runtime_checkable
-class ConfigClass(Protocol):
+class Configclass(Protocol):
+    """Configclass for type hinting."""
+
     _config_class_type: str
 
 
@@ -35,21 +43,20 @@ class __CallableSerializer(ClassSerializer):
             return {
                 "module": value.__module__,
                 "function": value.__name__,
-                "file_path": file_path
+                "file_path": file_path,
             }
         return {
             "module": value.__module__,
             "function": value.__name__,
-            "file_path": ""
+            "file_path": "",
         }
 
 
 class __CallableDeserializer(ClassDeserializer):
     @dispatch
     def deserialize(
-            self,
-            cls: Type[Callable],
-            value: dict[str, str]) -> Callable:
+        self, cls: Type[Callable], value: dict[str, str]
+    ) -> Callable:
         # get the module and function name
         module_name = value["module"]
         function_name = value["function"]
@@ -65,8 +72,9 @@ class __CallableDeserializer(ClassDeserializer):
             spec.loader.exec_module(module)
             return getattr(module, function_name)
         else:
-            spec = (importlib.util.spec_from_file_location
-                    (module_name, file_path))
+            spec = importlib.util.spec_from_file_location(
+                module_name, file_path
+            )
             if spec is None:
                 raise ImportError(f"Module {module_name} not found")
             module = importlib.util.module_from_spec(spec)
@@ -77,10 +85,12 @@ class __CallableDeserializer(ClassDeserializer):
             if not hasattr(module, function_name):
                 raise AttributeError(
                     f"Function {function_name} not "
-                    f"found in module {module_name}")
+                    f"found in module {module_name}"
+                )
 
             # get the function
             return getattr(module, function_name)
+
 
 def config_field(
     *,
@@ -90,7 +100,7 @@ def config_field(
     default_factory=None,
     _in: list | None = None,
     validators: list[Callable[..., bool]] | None = None,
-    serializer:  Callable[..., Any] | None = None,
+    serializer: Callable[..., Any] | None = None,
     deserializer: Callable[..., Any] | None = None,
     alias: list[str] | None = None,
 ) -> Any:
@@ -126,7 +136,9 @@ def config_field(
 
 
 @dataclass_transform(field_specifiers=(config_field,))
-def configclass(class_to_register: type|None = None, *_args, **_kwargs) -> Callable[[type], ConfigClass] | ConfigClass:
+def configclass(
+    class_to_register: type | None = None, *_args, **_kwargs
+) -> Callable[[type], Configclass] | Configclass:
     """
     Make a Configclass from a standard class with attributes.
 
@@ -142,7 +154,7 @@ def configclass(class_to_register: type|None = None, *_args, **_kwargs) -> Calla
     class_to_register: The class to register with Config.
     """
 
-    def decorator(_cls: type) -> ConfigClass:
+    def decorator(_cls: type) -> Configclass:
         registry = ConfigClassRegistry()
         registry.register(_cls)
 
@@ -158,8 +170,8 @@ def configclass(class_to_register: type|None = None, *_args, **_kwargs) -> Calla
         # Add pyserde decorator
         _cls = serde(
             _cls,
-        class_serializer=__CallableSerializer(),
-        class_deserializer=__CallableDeserializer()
+            class_serializer=__CallableSerializer(),
+            class_deserializer=__CallableDeserializer(),
         )
 
         def create_property(name, gt=None, lt=None, _in=None, validators=None):
@@ -207,8 +219,7 @@ def configclass(class_to_register: type|None = None, *_args, **_kwargs) -> Calla
                     ),
                 )
 
-
-        return cast(ConfigClass,_cls)
+        return cast(Configclass, _cls)
 
     if class_to_register is not None:
         return decorator(class_to_register)
