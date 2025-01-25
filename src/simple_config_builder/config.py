@@ -1,4 +1,31 @@
-"""Test implementation of a config class decorator and a registry."""
+"""
+Implementation of the configclass functions.
+
+The configclass functions are used to create a class with constraints
+on the fields. The constraints are defined using the config_field
+decorator. The configclass decorator adds the following functionality:
+
+- Registers the class in the ConfigClassRegistry
+- Adds a _config_class_type attribute to the class
+- Converts the class to a pyserde class for serialization and deserialization
+A class decorated with configclass fulfills the Configclass protocol.
+
+Example:
+    ``` python
+    from config import configclass, config_field
+
+    @configclass
+    class MyClass:
+        x:
+            int = config_field(gt=0, lt=10)
+        y:
+            str = config_field(_in=["a", "b", "c"])
+
+    my_class: Configclass = MyClass(x=5, y="a")
+    my_class.x = 10  # Raises ValueError
+    my_class.y = "d"  # Raises ValueError
+    ```
+"""
 
 from __future__ import annotations
 
@@ -143,6 +170,7 @@ def configclass(
     Make a Configclass from a standard class with attributes.
 
     This decorator adds the following functionality:
+
     - Registers the class with Config
     - Adds a _config_class_type attribute to the class
     - Convert a to a pyserde class for serialization and deserialization
