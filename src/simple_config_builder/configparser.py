@@ -38,6 +38,11 @@ class Configparser:
         config_type: The configuration type. Defaults to None.
         autosave: Autosave the configuration file. Defaults to False.
         autoreload: Autoreload the configuration file. Defaults to False.
+
+        Raises
+        ------
+        ValueError: If the configuration type is not recognized.
+        ValueError: If the configuration type is not supported.
         """
         self.config_file = config_file
         self.config_type = config_type
@@ -50,6 +55,10 @@ class Configparser:
 
         if self.config_type is None:
             self.config_type = self._get_config_type()
+            if self.config_type is None:
+                raise ValueError("The configuration type is not recognized.")
+        if self.config_type is None:
+            raise ValueError("The configuration type is not supported.")
         # first read
         self.config_data = parse_config(self.config_file, self.config_type)
         if self.autoreload:
@@ -78,6 +87,8 @@ class Configparser:
         self._old_config_data = self.config_data
 
         def _save_config():
+            if self.config_type is None:
+                return
             if self._old_config_data != self.config_data:
                 write_config(
                     self.config_file, self.config_data, self.config_type
@@ -91,6 +102,8 @@ class Configparser:
 
         # Check for changes in the configuration file
         def _reload_config():
+            if self.config_type is None:
+                return
             new_config_data = parse_config(self.config_file, self.config_type)
             if new_config_data != self.config_data:
                 self.config_data = new_config_data
@@ -128,8 +141,12 @@ class Configparser:
 
     def save(self):
         """Save the configuration data to the configuration file."""
+        if self.config_type is None:
+            return
         write_config(self.config_file, self.config_data, self.config_type)
 
     def reload(self):
         """Reload the configuration data from the configuration file."""
+        if self.config_type is None:
+            return
         self.config_data = parse_config(self.config_file, self.config_type)

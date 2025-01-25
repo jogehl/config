@@ -12,7 +12,7 @@ from serde.json import to_json, from_json
 from simple_config_builder.config import (
     ConfigClassRegistry,
     config_field,
-    configclass,
+    configclass, ConfigClass,
 )
 
 
@@ -226,7 +226,11 @@ class TestConfig(TestCase):
         # make path to external file
         spec = importlib.util.spec_from_file_location(
             "external_func_for_testing", external_file_location)
+        if spec is None:
+            raise ValueError("Spec is None")
         external_func = importlib.util.module_from_spec(spec)
+        if spec.loader is None:
+            raise ValueError("Loader is None")
         spec.loader.exec_module(external_func)
         func = getattr(external_func, "fun")
 
@@ -244,6 +248,18 @@ class TestConfig(TestCase):
         logging.error(json)
         n = from_json(OClass, json)
         self.assertEqual(func.__code__, n.func1.__code__)
+
+    def test_on_protocol(self):
+        @configclass
+        class P:
+            value1: int = config_field(gt=0, lt=10, default=5)
+
+        def foo(config: ConfigClass):
+            pass
+
+        p = P()
+        foo(p)
+        self.assertIsInstance(p, ConfigClass)
 
 def fun():
     """Test function."""
