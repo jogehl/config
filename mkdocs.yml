@@ -19,8 +19,6 @@ plugins:
         handlers:
             python:
                 options:
-                    extensions:
-                        - mkdocstrings_extensions_simple_config_builder
                     paths: ["src"]
                     docstring_style: google
                     docstring_section_style: spacy
