@@ -42,7 +42,7 @@ from typing import (
     runtime_checkable,
     dataclass_transform,
     Any,
-    cast,
+    cast, Union,
 )
 from collections.abc import Callable
 
@@ -165,7 +165,7 @@ def config_field(
 @dataclass_transform(field_specifiers=(config_field,))
 def configclass(
     class_to_register: type | None = None, *_args, **_kwargs
-) -> Callable[[type], Configclass] | Configclass:
+) -> Callable[[type], Configclass|type] | Configclass | type:
     """
     Make a Configclass from a standard class with attributes.
 
@@ -182,7 +182,7 @@ def configclass(
     class_to_register: The class to register with Config.
     """
 
-    def decorator(_cls: type) -> Configclass:
+    def decorator(_cls: type) -> Configclass | type:
         registry = ConfigClassRegistry()
         registry.register(_cls)
 
@@ -247,7 +247,7 @@ def configclass(
                     ),
                 )
 
-        return cast(Configclass, _cls)
+        return cast(Union[Configclass, type], _cls)
 
     if class_to_register is not None:
         return decorator(class_to_register)
