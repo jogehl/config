@@ -42,7 +42,8 @@ from typing import (
     runtime_checkable,
     dataclass_transform,
     Any,
-    cast, Union,
+    cast,
+    Union,
 )
 from collections.abc import Callable
 
@@ -165,7 +166,7 @@ def config_field(
 @dataclass_transform(field_specifiers=(config_field,))
 def configclass(
     class_to_register: type | None = None, *_args, **_kwargs
-) -> Callable[[type], Configclass|type] | Configclass | type:
+) -> Callable[[type], Configclass | type] | Configclass | type:
     """
     Make a Configclass from a standard class with attributes.
 
