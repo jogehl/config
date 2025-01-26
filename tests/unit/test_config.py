@@ -1,4 +1,5 @@
 """Tests for config module."""
+
 import dis
 import importlib.util
 import inspect
@@ -13,6 +14,7 @@ from simple_config_builder.config import (
     ConfigClassRegistry,
     config_field,
     configclass,
+    Configclass,
 )
 
 
@@ -198,7 +200,6 @@ class TestConfig(TestCase):
         self.assertEqual(M._config_class_type, "test_config.M")
         inspect.getmembers(M)
 
-
     def test_callable_type(self):
         """Test that the type attribute is added to the class."""
 
@@ -222,11 +223,17 @@ class TestConfig(TestCase):
         current_file_path = dirname(current_file_location)
         pacakge_file_path = dirname(dirname(current_file_path))
         external_file_location = os.path.join(
-            pacakge_file_path, "external_func_for_testing.py")
+            pacakge_file_path, "external_func_for_testing.py"
+        )
         # make path to external file
         spec = importlib.util.spec_from_file_location(
-            "external_func_for_testing", external_file_location)
+            "external_func_for_testing", external_file_location
+        )
+        if spec is None:
+            raise ValueError("Spec is None")
         external_func = importlib.util.module_from_spec(spec)
+        if spec.loader is None:
+            raise ValueError("Loader is None")
         spec.loader.exec_module(external_func)
         func = getattr(external_func, "fun")
 
@@ -239,11 +246,25 @@ class TestConfig(TestCase):
         logging.error(dis.dis(n.func1))
         self.assertEqual(dis.dis(func), dis.dis(n.func1))
 
-
         json = to_json(n)
         logging.error(json)
         n = from_json(OClass, json)
         self.assertEqual(func.__code__, n.func1.__code__)
+
+    def test_on_protocol(self):
+        """Test that the type attribute is added to the class."""
+
+        @configclass
+        class P:
+            value1: int = config_field(gt=0, lt=10, default=5)
+
+        def foo(config: Configclass):
+            pass
+
+        p = P()
+        foo(p)
+        self.assertIsInstance(p, Configclass)
+
 
 def fun():
     """Test function."""

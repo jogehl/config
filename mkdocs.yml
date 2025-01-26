@@ -16,10 +16,11 @@ plugins:
     - search
     - autorefs
     - mkdocstrings:
-        default_handler: python
         handlers:
             python:
                 options:
+                    extensions:
+                        - mkdocstrings_extensions_simple_config_builder
                     paths: ["src"]
                     docstring_style: google
                     docstring_section_style: spacy
@@ -27,6 +28,16 @@ plugins:
                     show_signature: false
     - include-markdown
     - mike
+markdown_extensions:
+    - pymdownx.highlight:
+        anchor_linenums: true
+        line_spans: __span
+        pygments_lang_class: true
+    - pymdownx.inlinehilite
+    - pymdownx.snippets
+    - pymdownx.superfences
+
 extra:
     version:
         provider: mike
+    log_level: ERROR
