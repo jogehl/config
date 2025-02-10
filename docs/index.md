@@ -137,8 +137,11 @@ in the mkdocstrings section of your mkdocs.yml file.
 
 ```yaml
 mkdocstrings:
-  extensions:
-    - mkdocstrings_extensions_simple_config_builder
+  handlers:
+    python:
+        options:
+            extensions:
+              - mkdocstrings_extensions_simple_config_builder
 ```
 It will generate documentation for the config classes and fields.
 It is avaible at: 
