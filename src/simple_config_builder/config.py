@@ -50,7 +50,6 @@ from collections.abc import Callable
 
 if TYPE_CHECKING:
     from typing import ClassVar
-    from _typeshed import DataclassInstance
 from serde import serde, field as serde_field
 
 
@@ -231,7 +230,7 @@ def configclass[T](
 
             return property(getter, setter)
 
-        for f in dataclasses.fields(_cls): # type: ignore
+        for f in dataclasses.fields(_cls):  # type: ignore
             if (
                 "gt" in f.metadata
                 or "lt" in f.metadata

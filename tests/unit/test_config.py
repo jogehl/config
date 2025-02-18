@@ -9,7 +9,6 @@ from collections.abc import Callable
 from datetime import datetime
 from unittest import TestCase
 from serde.json import to_json, from_json
-from serde.core import strict
 
 from simple_config_builder.config import (
     ConfigClassRegistry,
@@ -265,6 +264,7 @@ class TestConfig(TestCase):
         p = P()
         foo(p)
         self.assertIsInstance(p, Configclass)
+
 
 def fun():
     """Test function."""
