@@ -35,6 +35,7 @@ import os
 
 from plum import dispatch
 from serde.core import ClassSerializer, ClassDeserializer
+
 from typing import (
     TYPE_CHECKING,
     Type,
@@ -49,6 +50,7 @@ from collections.abc import Callable
 
 if TYPE_CHECKING:
     from typing import ClassVar
+    from _typeshed import DataclassInstance
 from serde import serde, field as serde_field
 
 
@@ -164,9 +166,9 @@ def config_field(
 
 
 @dataclass_transform(field_specifiers=(config_field,))
-def configclass(
-    class_to_register: type | None = None, *_args, **_kwargs
-) -> Callable[[type], Configclass | type] | Configclass | type:
+def configclass[T](
+    class_to_register: type[T] | None = None, *args, **kwargs
+) -> Callable[[type[T]], Configclass | type[T]] | Configclass | type[T]:
     """
     Make a Configclass from a standard class with attributes.
 
@@ -183,7 +185,7 @@ def configclass(
     class_to_register: The class to register with Config.
     """
 
-    def decorator(_cls: type) -> Configclass | type:
+    def decorator[C](_cls: type[C]) -> Configclass | type[C]:
         registry = ConfigClassRegistry()
         registry.register(_cls)
 
@@ -229,7 +231,7 @@ def configclass(
 
             return property(getter, setter)
 
-        for f in dataclasses.fields(_cls):
+        for f in dataclasses.fields(_cls): # type: ignore
             if (
                 "gt" in f.metadata
                 or "lt" in f.metadata
@@ -248,7 +250,7 @@ def configclass(
                     ),
                 )
 
-        return cast(Union[Configclass, type], _cls)
+        return cast(Union[Configclass, type[C]], _cls)
 
     if class_to_register is not None:
         return decorator(class_to_register)
@@ -283,7 +285,7 @@ class ConfigClassRegistry:
         return f"{class_to_register.__module__}.{class_to_register.__name__}"
 
     @classmethod
-    def register(cls, class_to_register: type):
+    def register[T](cls, class_to_register: type[T]):
         """
         Register a class in the global registry.
 
