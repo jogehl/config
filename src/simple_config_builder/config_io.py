@@ -60,6 +60,18 @@ def construct_config(config_data: Any):
             config_data[key] = tuple(value)
     if "_config_class_type" in config_data:
         config_class_type = config_data["_config_class_type"]
+        if not isinstance(config_class_type, str):
+            raise ValueError(
+                "The _config_class_type must be a "
+                "string representing the class type."
+            )
+
+        # cut of the class name if it is a full path
+        if "." in config_class_type:
+            config_class_module = config_class_type.rsplit(".", 1)[0]
+        import importlib
+
+        importlib.import_module(config_class_module)
         config_class = ConfigClassRegistry.get(config_class_type)
         return config_class(**config_data)
     return config_data
