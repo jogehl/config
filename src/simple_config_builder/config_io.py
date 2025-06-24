@@ -6,6 +6,8 @@ The IO functions are used to read and write the configuration file.
 
 from typing import Any
 
+import importlib
+
 from serde import to_dict
 from simple_config_builder.config import ConfigClassRegistry
 from simple_config_builder.config_types import ConfigTypes
@@ -69,10 +71,21 @@ def construct_config(config_data: Any):
         # cut of the class name if it is a full path
         if "." in config_class_type:
             config_class_module = config_class_type.rsplit(".", 1)[0]
-        import importlib
-
-        importlib.import_module(config_class_module)
-        config_class = ConfigClassRegistry.get(config_class_type)
+        try:
+            importlib.import_module(config_class_module)
+        except ImportError:
+            raise ImportError(
+                f"Could not import the module '{config_class_module}'. "
+                "Please make sure the module is installed and available "
+                "in the Python path."
+            )
+        try:
+            config_class = ConfigClassRegistry.get(config_class_type)
+        except ValueError:
+            raise ValueError(
+                f"Please make sure the class '{config_class_type}' "
+                "is in the module '{config_class_module}'."
+            )
         return config_class(**config_data)
     return config_data
 
