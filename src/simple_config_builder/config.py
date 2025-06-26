@@ -136,7 +136,6 @@ class Configclass(BaseModel):
         It registers the class in the ConfigClassRegistry.
         """
         ConfigClassRegistry.register(cls)
-        print(f"Registering {cls.__name__} in ConfigClassRegistry")
         return super().__init_subclass__(**kwargs)
 
     model_config = ConfigDict(
