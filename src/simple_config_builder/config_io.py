@@ -8,9 +8,34 @@ from typing import Any
 
 import importlib
 
-from serde import to_dict
+from pydantic import BaseModel
+
 from simple_config_builder.config import ConfigClassRegistry
 from simple_config_builder.config_types import ConfigTypes
+
+
+def to_dict(obj: Any) -> dict | list | tuple:
+    """
+    Convert an object to a dictionary.
+
+    Parameters
+    ----------
+    obj: The object to convert.
+
+    Returns
+    -------
+    The converted dictionary.
+    """
+    if isinstance(obj, BaseModel):
+        # If the object is a Pydantic model, convert it to a dictionary
+        return obj.model_dump()
+    if isinstance(obj, dict):
+        return {key: to_dict(value) for key, value in obj.items()}
+    if isinstance(obj, list):
+        return [to_dict(item) for item in obj]
+    if isinstance(obj, tuple):
+        return tuple(to_dict(item) for item in obj)
+    return obj
 
 
 def parse_config(config_file: str, config_type: ConfigTypes) -> dict:
@@ -81,12 +106,39 @@ def construct_config(config_data: Any):
             )
         try:
             config_class = ConfigClassRegistry.get(config_class_type)
+            print(f"Config class found: {config_class}")
         except ValueError:
             raise ValueError(
                 f"Please make sure the class '{config_class_type}' "
                 f"is in the module '{config_class_module}'."
             )
-        return config_class(**config_data)
+        del config_data["_config_class_type"]
+
+        # Log the expected fields of the config class
+        expected_fields = set(config_class.__pydantic_fields__.keys())
+        print(f"Expected fields for {config_class}: {expected_fields}")
+
+        # Log the actual keys in the config data
+        actual_keys = set(config_data.keys())
+        print(f"Actual keys in config data: {actual_keys}")
+
+        # Check for mismatched keys
+        mismatched_keys = actual_keys - expected_fields
+        if mismatched_keys:
+            raise ValueError(
+                f"Mismatched keys in config data: {mismatched_keys}. "
+                f"Expected fields: {expected_fields}"
+            )
+        # Filter config_data to include only expected fields
+        filtered_config_data = {
+            key: value
+            for key, value in config_data.items()
+            if key in expected_fields
+        }
+        print(f"Filtered config data: {filtered_config_data}")
+
+        # Pass filtered_config_data as a single dictionary argument
+        return config_class.model_validate(filtered_config_data)
     return config_data
 
 
@@ -144,20 +196,18 @@ def parse_toml(config_file: str):
         return toml.load(f)
 
 
-def write_config(
-    config_file: str, config_data: dict, config_type: ConfigTypes
-):
+def write_config(config_file: str, data: dict, config_type: ConfigTypes):
     """
     Write the configuration file.
 
     Parameters
     ----------
     config_file: The configuration file path.
-    config_data: The configuration data.
+    data: The configuration data.
     config_type: The configuration file type.
     """
     # try to make the data to a dictionary
-    config_data = to_dict(config_data)
+    config_data = to_dict(data)
     match config_type:
         case ConfigTypes.JSON:
             write_json(config_file, config_data)
@@ -169,7 +219,7 @@ def write_config(
             raise ValueError("The configuration type is not supported.")
 
 
-def write_json(config_file: str, config_data: dict):
+def write_json(config_file: str, config_data: dict | list | tuple):
     """
     Write the JSON configuration file.
 
@@ -184,7 +234,7 @@ def write_json(config_file: str, config_data: dict):
         json.dump(config_data, f, indent=4)
 
 
-def write_yaml(config_file: str, config_data: dict):
+def write_yaml(config_file: str, config_data: dict | list | tuple):
     """
     Write the YAML configuration file.
 
@@ -199,7 +249,7 @@ def write_yaml(config_file: str, config_data: dict):
         yaml.dump(config_data, f)
 
 
-def write_toml(config_file: str, config_data: dict):
+def write_toml(config_file: str, config_data: dict | list | tuple):
     """
     Write the TOML configuration file.
 
@@ -212,3 +262,6 @@ def write_toml(config_file: str, config_data: dict):
 
     with open(config_file, "w") as f:
         toml.dump(config_data, f)
+
+
+__all__ = ["to_dict", "parse_config", "write_config"]

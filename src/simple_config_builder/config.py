@@ -14,8 +14,7 @@ Example:
     ``` python
     from config import configclass, config_field
 
-    @configclass
-    class MyClass:
+    class MyClass(Configclass):
         x:
             int = config_field(gt=0, lt=10)
         y:
@@ -29,231 +28,120 @@ Example:
 
 from __future__ import annotations
 
-import dataclasses
 import importlib.util
-import os
 
-from plum import dispatch
-from serde.core import ClassSerializer, ClassDeserializer
+from pydantic import (
+    BaseModel,
+    PrivateAttr,
+    SerializerFunctionWrapHandler,
+    model_serializer,
+    model_validator,
+)
+from pydantic import Field
 
 from typing import (
     TYPE_CHECKING,
-    Type,
-    Protocol,
-    runtime_checkable,
-    dataclass_transform,
     Any,
-    cast,
-    Union,
 )
-from collections.abc import Callable
 
 if TYPE_CHECKING:
     from typing import ClassVar
-from serde import serde, field as serde_field
+from pydantic import ConfigDict
 
 
-@runtime_checkable
-class Configclass(Protocol):
-    """Configclass for type hinting."""
+class Configclass(BaseModel):
+    """Configclass base class."""
 
-    _config_class_type: str
+    _config_class_type: str = PrivateAttr()
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Set _config_class_type to the path and class name of the class
+        self._config_class_type = (
+            f"{self.__class__.__module__}.{self.__class__.__name__}"
+        )
 
-class __CallableSerializer(ClassSerializer):
-    @dispatch
-    def serialize(self, value: Callable) -> dict[str, str]:
-        # check if the function is in the python path
-        try:
-            _ = __import__(value.__module__)
-        except Exception:
-            # get the file path of the function
-            file_path = os.path.abspath(value.__code__.co_filename)
-            return {
-                "module": value.__module__,
-                "function": value.__name__,
-                "file_path": file_path,
-            }
-        return {
-            "module": value.__module__,
-            "function": value.__name__,
-            "file_path": "",
-        }
+    @model_serializer(mode="wrap")
+    def _wrap_ser(self, handler: SerializerFunctionWrapHandler):
+        """Serialize the Configclass instance."""
+        # use standard pydantic serialization exclude callables
+        # and add the _config_class_type attribute
 
+        data: dict[str, Any] = {}
 
-class __CallableDeserializer(ClassDeserializer):
-    @dispatch
-    def deserialize(
-        self, cls: Type[Callable], value: dict[str, str]
-    ) -> Callable:
-        # get the module and function name
-        module_name = value["module"]
-        function_name = value["function"]
-        file_path = value["file_path"] if "file_path" in value else ""
-        # check if the function is in the python path
-        if file_path == "":
-            spec = importlib.util.find_spec(module_name)
-            if spec is None:
-                raise ImportError(f"Module {module_name} not found")
-            if spec.loader is None:
-                raise ImportError(f"Loader for module {module_name} not found")
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            return getattr(module, function_name)
-        else:
-            spec = importlib.util.spec_from_file_location(
-                module_name, file_path
-            )
-            if spec is None:
-                raise ImportError(f"Module {module_name} not found")
-            module = importlib.util.module_from_spec(spec)
-            if spec.loader is None:
-                raise ImportError(f"Loader for module {module_name} not found")
-            spec.loader.exec_module(module)
+        data["_config_class_type"] = self._config_class_type
 
-            if not hasattr(module, function_name):
-                raise AttributeError(
-                    f"Function {function_name} not "
-                    f"found in module {module_name}"
-                )
+        # Serialize callables to their string representation
+        for key, field_info in type(self).model_fields.items():
+            value = getattr(self, key)
+            if callable(value):
+                # try import the module
+                try:
+                    importlib.import_module(value.__module__)
+                    file_path = ""
+                except ImportError:
+                    file_path = value.__code__.co_filename
+                data[key] = {
+                    "type": "callable",
+                    "module": value.__module__,
+                    "name": value.__name__,
+                    "file_path": file_path,
+                }
+            else:
+                # Otherwise, use the standard serialization
+                data[key] = handler(value, key)
 
-            # get the function
-            return getattr(module, function_name)
+        return data
 
-
-def config_field(
-    *,
-    gt=None,
-    lt=None,
-    default=None,
-    default_factory=None,
-    _in: list | None = None,
-    validators: list[Callable[..., bool]] | None = None,
-    serializer: Callable[..., Any] | None = None,
-    deserializer: Callable[..., Any] | None = None,
-    alias: list[str] | None = None,
-) -> Any:
-    """
-    Create a field with constraints.
-
-    Parameters
-    ----------
-    gt: The minimum value of the field.
-    lt: The maximum value of the field.
-    default: The default value of the field.
-    default_factory: The default factory of the field.
-    _in: A list of valid values for the field.
-    validators: A list of validator functions for the field.
-    serializer: A serializer function for the field.
-    deserializer: A deserializer function for the field.
-    alias: An alias for the field.
-
-    Returns
-    -------
-    A dataclasses.Field object with the constraints.
-    """
-    return serde_field(
-        default=default if default is not None else dataclasses.MISSING,
-        default_factory=default_factory
-        if default_factory is not None
-        else dataclasses.MISSING,
-        serializer=serializer,
-        deserializer=deserializer,
-        alias=alias,
-        metadata={"gt": gt, "lt": lt, "_in": _in, "validators": validators},
+    @model_validator(
+        mode="before",
     )
-
-
-@dataclass_transform(field_specifiers=(config_field,))
-def configclass[T](
-    class_to_register: type[T] | None = None, *args, **kwargs
-) -> Callable[[type[T]], Configclass | type[T]] | Configclass | type[T]:
-    """
-    Make a Configclass from a standard class with attributes.
-
-    This decorator adds the following functionality:
-
-    - Registers the class with Config
-    - Adds a _config_class_type attribute to the class
-    - Convert a to a pyserde class for serialization and deserialization
-    - Adds property methods for fields with constraints which
-    are defined using the config_field decorator.
-
-    Parameters
-    ----------
-    class_to_register: The class to register with Config.
-    """
-
-    def decorator[C](_cls: type[C]) -> Configclass | type[C]:
-        registry = ConfigClassRegistry()
-        registry.register(_cls)
-
-        # Add a _config_class_type attribute to the class for serialization
-        # Also add the annotation to the class
-        setattr(
-            _cls,
-            "_config_class_type",
-            ConfigClassRegistry.get_class_str_from_class(_cls),
-        )
-        _cls.__annotations__["_config_class_type"] = str
-
-        # Add pyserde decorator
-        _cls = serde(
-            _cls,
-            class_serializer=__CallableSerializer(),
-            class_deserializer=__CallableDeserializer(),
-        )
-
-        def create_property(name, gt=None, lt=None, _in=None, validators=None):
-            def getter(self):
-                return getattr(self, f"_{name}")
-
-            def setter(self, value):
-                if gt is not None and value < gt:
-                    exception_message = f"{name} must be greater than {gt}"
-                    raise ValueError(exception_message)
-                if lt is not None and value > lt:
-                    exception_message = f"{name} must be less than {lt}"
-                    raise ValueError(exception_message)
-                if _in is not None and value not in _in:
-                    exception_message = f"{name} must be in {_in}"
-                    raise ValueError(exception_message)
-                if validators is not None:
-                    for constraint in validators:
-                        if not constraint(value):
-                            exception_message = (
-                                f"{name} does not satisfy the "
-                                f"validator {constraint}"
-                            )
-                            raise ValueError(exception_message)
-                setattr(self, f"_{name}", value)
-
-            return property(getter, setter)
-
-        for f in dataclasses.fields(_cls):  # type: ignore
+    @classmethod
+    def _wrap_val(cls, data: dict[str, Any], info) -> dict[str, Any]:
+        for key, value in data.items():
             if (
-                "gt" in f.metadata
-                or "lt" in f.metadata
-                or "_in" in f.metadata
-                or "validators" in f.metadata
+                isinstance(value, dict)
+                and "type" in value
+                and value["type"] == "callable"
             ):
-                setattr(
-                    _cls,
-                    f.name,
-                    create_property(
-                        f.name,
-                        f.metadata.get("gt"),
-                        f.metadata.get("lt"),
-                        f.metadata.get("_in"),
-                        f.metadata.get("validators"),
-                    ),
-                )
+                module = value["module"]
+                name = value["name"]
+                file_path = value.get("file_path", "")
+                if file_path:
+                    spec = importlib.util.spec_from_file_location(
+                        name, file_path
+                    )
+                    if spec is None:
+                        msg = (
+                            f"Could not find spec for module"
+                            f"{name} at {file_path}"
+                        )
+                        raise ImportError(msg)
+                    module = importlib.util.module_from_spec(spec)
+                    if spec.loader is None:
+                        msg = f"Could not load module" f"{name} at {file_path}"
+                        raise ImportError(msg)
+                    spec.loader.exec_module(module)
+                else:
+                    module = importlib.import_module(module)
+                data[key] = getattr(module, name)
+        return data
 
-        return cast(Union[Configclass, type[C]], _cls)
+    def __init_subclass__(cls, **kwargs):
+        """
+        Initialize the subclass and register it in the ConfigClassRegistry.
 
-    if class_to_register is not None:
-        return decorator(class_to_register)
-    return decorator
+        This method is called when a class is defined that
+        inherits from Configclass.
+        It registers the class in the ConfigClassRegistry.
+        """
+        ConfigClassRegistry.register(cls)
+        print(f"Registering {cls.__name__} in ConfigClassRegistry")
+        return super().__init_subclass__(**kwargs)
+
+    model_config = ConfigDict(
+        validate_assignment=True,
+    )
 
 
 class ConfigClassRegistry:
@@ -331,7 +219,7 @@ class ConfigClassRegistry:
         )
 
     @classmethod
-    def get(cls, class_name) -> type:
+    def get(cls, class_name) -> Configclass:
         """
         Get a class from the registry by name.
 
@@ -351,3 +239,10 @@ class ConfigClassRegistry:
             if class_to_register == class_name:
                 return cls.__registry[class_to_register]
         raise ValueError(f"{class_name} is not registered.")
+
+
+__all__ = [
+    "Configclass",
+    "ConfigClassRegistry",
+    "Field",
+]
