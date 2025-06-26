@@ -22,9 +22,9 @@ classifiers = [
 ]
 dependencies = [
   "click",
-  "pyserde",
   "toml",
   "pyaml",
+  "pydantic",
   "fastapi[all]",
 ]
 
