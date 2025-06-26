@@ -118,30 +118,5 @@ my_function(MyConfig())
 
 ```
 
-
-
-## Documentation
-For good documentation a mkdocstrings extension is provided as 
-a python package which can be installed using pip.
-
-```bash
-pip install mkdocstrings-extensions-simple-config-builder
-```
-
-This extension should be added to the list of extensions 
-in the mkdocstrings section of your mkdocs.yml file.
-
-```yaml
-mkdocstrings:
-  handlers:
-    python:
-        options:
-            extensions:
-              - mkdocstrings_extensions_simple_config_builder
-```
-It will generate documentation for the config classes and fields.
-It is avaible at: 
-[Extension Plugin](https://github.com/jogehl/mkdocstrings-extensions-simple-config-builder) 
-
 ## License
 This project is licensed under the MIT License - see the [LICENSE](license.md) file for details.
