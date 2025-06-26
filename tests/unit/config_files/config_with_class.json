@@ -1,5 +1,6 @@
 {
     "test": {
+        "_config_class_type": "test_config_io._TestClassConfigWithConfigClass",
         "key": "value",
         "list_key": [
             "value1",
@@ -17,19 +18,17 @@
             }
         ],
         "sub_key": {
-            "key": "value",
-            "_config_class_type": "test_config_io._TestClassConfigInnerWithConfigClass"
+            "key": "value"
         },
         "sub_list_key": [
             {
-                "key": "value",
-                "_config_class_type": "test_config_io._TestClassConfigInnerWithConfigClass"
+                "_config_class_type": "test_config_io._TestClassConfigInnerWithConfigClass",
+                "key": "value"
             },
             {
-                "key": "value",
-                "_config_class_type": "test_config_io._TestClassConfigInnerWithConfigClass"
+                "_config_class_type": "test_config_io._TestClassConfigInnerWithConfigClass",
+                "key": "value"
             }
-        ],
-        "_config_class_type": "test_config_io._TestClassConfigWithConfigClass"
+        ]
     }
 }

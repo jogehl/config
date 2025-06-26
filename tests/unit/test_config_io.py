@@ -13,7 +13,7 @@ from simple_config_builder.config_io import (
     parse_yaml,
     parse_toml,
 )
-from simple_config_builder.config import config_field, configclass
+from simple_config_builder.config import Configclass, Field
 
 
 class TestConfigIOMethods(TestCase):
@@ -186,26 +186,22 @@ class TestConfigIOMethods(TestCase):
         self.assertEqual(config_data["test"].sub_key.key, "value")
 
 
-@configclass
-class _TestClassConfigInnerWithConfigClass:
-    key: str = config_field(default="value")
+class _TestClassConfigInnerWithConfigClass(Configclass):
+    key: str = Field(default="value")
 
 
-@configclass
-class _TestClassConfigWithConfigClass:
-    key: str = config_field(default="value")
-    list_key: list = config_field(default_factory=lambda: ["value1", "value2"])
-    int_key: int = config_field(default=1)
-    float_key: float = config_field(default=1.0)
-    bool_key: bool = config_field(default=True)
-    dict_key: dict = config_field(default_factory=lambda: {"key": "value"})
-    list_dict_key: list = config_field(
-        default_factory=lambda: [{"key": "value"}]
-    )
-    sub_key: _TestClassConfigInnerWithConfigClass = config_field(
+class _TestClassConfigWithConfigClass(Configclass):
+    key: str = Field(default="value")
+    list_key: list = Field(default_factory=lambda: ["value1", "value2"])
+    int_key: int = Field(default=1)
+    float_key: float = Field(default=1.0)
+    bool_key: bool = Field(default=True)
+    dict_key: dict = Field(default_factory=lambda: {"key": "value"})
+    list_dict_key: list = Field(default_factory=lambda: [{"key": "value"}])
+    sub_key: _TestClassConfigInnerWithConfigClass = Field(
         default_factory=lambda: _TestClassConfigInnerWithConfigClass()
     )
-    sub_list_key: list[_TestClassConfigInnerWithConfigClass] = config_field(
+    sub_list_key: list[_TestClassConfigInnerWithConfigClass] = Field(
         default_factory=lambda: [
             _TestClassConfigInnerWithConfigClass(),
             _TestClassConfigInnerWithConfigClass(),

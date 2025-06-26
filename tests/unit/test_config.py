@@ -3,19 +3,14 @@
 import dis
 import importlib.util
 import inspect
-import logging
 import os
 from collections.abc import Callable
-from datetime import datetime
+from typing import Literal
 from unittest import TestCase
-from serde.json import to_json, from_json
+from pydantic import ValidationError, field_validator
+from pydantic_core import to_json
 
-from simple_config_builder.config import (
-    ConfigClassRegistry,
-    config_field,
-    configclass,
-    Configclass,
-)
+from simple_config_builder import ConfigClassRegistry, Configclass, Field
 
 
 class TestConfig(TestCase):
@@ -24,7 +19,7 @@ class TestConfig(TestCase):
     def test_config_class_registry_register(self):
         """Test registering a class in ConfigClassRegistry."""
 
-        class A:
+        class A(Configclass):
             pass
 
         ConfigClassRegistry.register(A)
@@ -89,8 +84,7 @@ class TestConfig(TestCase):
     def test_config_class_decorator(self):
         """Test the configclass decorator."""
 
-        @configclass
-        class F:
+        class F(Configclass):
             value1: str
 
         self.assertTrue(
@@ -101,43 +95,39 @@ class TestConfig(TestCase):
     def test_config_class_decorator_config_field(self):
         """Test the config_field decorator."""
 
-        @configclass
-        class G:
-            value1: str = config_field()
+        class G(Configclass):
+            value1: str
 
-        self.assertTrue(hasattr(G, "value1"))
-        self.assertTrue(isinstance(G.value1, property))
+        print(G.__dict__)
+        self.assertTrue("value1" in G.model_fields)
 
     def test_config_class_decorator_config_field_gt(self):
         """Test the config_field decorator with greater than constraint."""
 
-        @configclass
-        class H:
-            value1: int = config_field(gt=0, default=1)
+        class H(Configclass):
+            value1: int = Field(gt=0, default=1)
 
         c = H()
         c.value1 = 1
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             c.value1 = -1
 
     def test_config_class_decorator_config_field_lt(self):
         """Test the config_field decorator with less than constraint."""
 
-        @configclass
-        class Il:
-            value1: int = config_field(lt=0, default=-1)
+        class Il(Configclass):
+            value1: int = Field(lt=0, default=-1)
 
         c = Il()
         c.value1 = -1
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             c.value1 = 1
 
     def test_config_class_decorator_config_field_in(self):
         """Test the config_field decorator with 'in' constraint."""
 
-        @configclass
-        class J:
-            value1: int = config_field(_in=[0, 1, 2], default=1)
+        class J(Configclass):
+            value1: Literal[1, 2] = Field(default=1)
 
         c = J()
         c.value1 = 1
@@ -147,13 +137,17 @@ class TestConfig(TestCase):
     def test_config_class_decorator_config_field_constraints(self):
         """Test the config_field decorator with custom constraints."""
 
-        @configclass
-        class K:
-            value1: int = config_field(
-                validators=[lambda x: x % 2 == 0], default=2
-            )
+        class K(Configclass):
+            value1: int
 
-        c = K()
+            @field_validator("value1")
+            def check_value1(cls, v):
+                # check if value % 2 is 0
+                if v % 2 != 0:
+                    raise ValueError("value1 must be an even number")
+                return v
+
+        c = K(value1=0)
         c.value1 = 2
         with self.assertRaises(ValueError):
             c.value1 = 1
@@ -161,57 +155,38 @@ class TestConfig(TestCase):
     def test_config_class_decorator_config_field_gt_lt(self):
         """Test decorator with both greater and less constraints."""
 
-        @configclass
-        class L:
-            value1: int = config_field(gt=0, lt=10, default=5)
+        class L(Configclass):
+            value1: int = Field(gt=0, lt=10, default=5)
 
         c = L()
         c.value1 = 5
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             c.value1 = -1
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             c.value1 = 11
-
-    def test_custom_serializer(self):
-        """Test custom serializer."""
-
-        @configclass
-        class M:
-            value1: datetime = config_field(
-                serializer=lambda x: x.strftime("%d/%m/%y"),
-                deserializer=lambda x: datetime.strptime(x, "%d/%m/%y"),
-            )
-
-        dt = datetime(2020, 1, 1)
-        c = M(value1=dt)
-        json = to_json(c)
-        self.assertIn('"value1":"01/01/20"', json)
-
-        c = from_json(M, json)
-        self.assertEqual(c.value1, dt)
 
     def test_type_attribute_is_added(self):
         """Test that the type attribute is added to the class."""
 
-        @configclass
-        class M:
-            value1: int = config_field(gt=0, lt=10, default=5)
+        class M(Configclass):
+            value1: int = Field(gt=0, lt=10, default=5)
 
-        self.assertEqual(M._config_class_type, "test_config.M")
+        self.assertEqual(
+            "_config_class_type" in M.__private_attributes__, True
+        )
         inspect.getmembers(M)
 
     def test_callable_type(self):
         """Test that the type attribute is added to the class."""
 
-        @configclass
-        class N:
+        class N(Configclass):
             func1: Callable
 
         n = N(func1=fun)
         self.assertEqual(n.func1.__code__, fun.__code__)
 
-        json = to_json(n)
-        n = from_json(N, json)
+        json = n.model_dump_json()
+        n = N.model_validate_json(json)
         self.assertEqual(fun.__code__, n.func1.__code__)
 
     def test_callable_type_from_other_file(self):
@@ -237,26 +212,22 @@ class TestConfig(TestCase):
         spec.loader.exec_module(external_func)
         func = getattr(external_func, "fun")
 
-        @configclass
-        class OClass:
+        class OClass(Configclass):
             func1: Callable
+            number: int = Field(default=1)
 
         n = OClass(func1=func)
-        logging.error(dis.dis(func))
-        logging.error(dis.dis(n.func1))
         self.assertEqual(dis.dis(func), dis.dis(n.func1))
 
         json = to_json(n)
-        logging.error(json)
-        n = from_json(OClass, json)
+        n = OClass.model_validate_json(json)
         self.assertEqual(func.__code__, n.func1.__code__)
 
     def test_on_protocol(self):
         """Test that the type attribute is added to the class."""
 
-        @configclass
-        class P:
-            value1: int = config_field(gt=0, lt=10, default=5)
+        class P(Configclass):
+            value1: int = Field(gt=0, lt=10, default=5)
 
         def foo(config: Configclass):
             pass

@@ -3,7 +3,7 @@
 
 def import_modules_from_directory(directory: str):
     """
-    Import and check fo @configclass decorator in the given directory.
+    Import and check fo Configclass subclasses in the given directory.
 
     Parameters
     ----------
@@ -25,11 +25,7 @@ def import_modules_from_directory(directory: str):
 
                 with open(module_path, "r") as file:
                     content = file.read()
-                    if (
-                        "@configclass" in content
-                        or "from config.config import configclass" in content
-                        or "import config.config" in content
-                    ):
+                    if "Configclass" in content:
                         # Dynamically import the module
                         try:
                             spec = importlib.util.spec_from_file_location(
