@@ -14,15 +14,13 @@ Instead of using a dictionary or a class to store your configuration,
 you can build config classes using this tool.
 
 ```python
-from simple_config_builder.config import configclass
-from simple_config_builder.config import config_field
+from simple_config_builder import Configclass, Field
 
-@configclass
-class MyConfig:
+class MyConfig(Configclass):
     name: str = "John Doe"
     age: int = 30
     is_student: bool = False
-    grades: int = config_field(gt=0, lt=100)
+    grades: int = Field(gt=0, lt=100)
 ```
 
 This will create a class with the specified fields and default values and validation rules.
@@ -30,15 +28,14 @@ This will create a class with the specified fields and default values and valida
 For IO, you can use 
 ```python
 from simple_config_builder.configparser import Configparser
-from simple_config_builder.config import configclass
-from simple_config_builder.config import config_field
+from simple_config_builder import Configclass, Field
 
 @configclass
 class MyConfig:
     name: str = "John Doe"
     age: int = 30
     is_student: bool = False
-    grades: int = config_field(gt=0, lt=100, default=90)
+    grades: int = Field(gt=0, lt=100, default=90)
 
 # Load and parse the configuration file
 config = Configparser("config.json")
@@ -58,16 +55,15 @@ Apart from that autosave and autoreload is supported.
 ### Callables
 You can also use callables as fields in the config class. 
 ```python
-from simple_config_builder.config import configclass
-from simple_config_builder.config import config_field
-from typing import Callable
+from simple_config_builder import Field, Configclass
+from collections.abc import Callable
 
 @configclass
 class MyConfig:
     name: str = "John Doe"
     age: int = 30
     is_student: bool = False
-    grades: int = config_field(gt=0, lt=100, default=90)
+    grades: int = Field(gt=0, lt=100, default=90)
     student_name_calling: Callable
 ```
 The callables are saved in the configuration files as package.module
@@ -91,15 +87,15 @@ a file_path is saved additionally.
 
 
 ### Typing
-A decorated class is of type Configclass so that type hints can be used.
+Because the Configclass is based on pydantic, you can use all the features of pydantic,
+like type hints, validation, and more.
+You can use the `Field` from pydantic to define constraints on the fields.
 
 ```python
-from simple_config_builder.config import configclass, Configclass
-from simple_config_builder.config import config_field
+from simple_config_builder import Configclass
 
 
-@configclass
-class MyConfig:
+class MyConfig(Configclass):
     name: str = "John Doe"
     age: int = 30
     is_student: bool = False
