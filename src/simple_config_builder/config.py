@@ -1,9 +1,9 @@
 """
-Implementation of the configclass functions.
+Implementation of the Configclass and the Registry.
 
-The configclass functions are used to create a class with constraints
-on the fields. The constraints are defined using the config_field
-decorator. The configclass decorator adds the following functionality:
+The Configclass are used to create a class with constraints
+on the fields. The constraints are defined using the Field from pydantic.
+The Configclass adds the following functionality:
 
 - Registers the class in the ConfigClassRegistry
 - Adds a _config_class_type attribute to the class
@@ -12,13 +12,13 @@ A class decorated with configclass fulfills the Configclass protocol.
 
 Example:
     ``` python
-    from config import configclass, config_field
+    from simple_config_builder import Configclass, Field
 
     class MyClass(Configclass):
         x:
-            int = config_field(gt=0, lt=10)
+            int = Field(gt=0, lt=10)
         y:
-            str = config_field(_in=["a", "b", "c"])
+            Literal["a", "b", "c"] = Field(default="a")
 
     my_class: Configclass = MyClass(x=5, y="a")
     my_class.x = 10  # Raises ValueError
