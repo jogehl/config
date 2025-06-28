@@ -89,7 +89,7 @@ class Configclass(BaseModel):
                 }
             else:
                 # Otherwise, use the standard serialization
-                data[key] = handler(value, key)
+                data[key] = value
 
         return data
 

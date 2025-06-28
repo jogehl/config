@@ -20,4 +20,5 @@ key = "value"
 key = "value"
 
 [test.sub_key]
+_config_class_type = "test_config_io._TestClassConfigInnerWithConfigClass"
 key = "value"

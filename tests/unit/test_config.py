@@ -223,18 +223,16 @@ class TestConfig(TestCase):
         n = OClass.model_validate_json(json)
         self.assertEqual(func.__code__, n.func1.__code__)
 
-    def test_on_protocol(self):
-        """Test that the type attribute is added to the class."""
+    def test_literal(self):
+        """Test if Literal works as expected."""
 
         class P(Configclass):
-            value1: int = Field(gt=0, lt=10, default=5)
-
-        def foo(config: Configclass):
-            pass
-
-        p = P()
-        foo(p)
-        self.assertIsInstance(p, Configclass)
+            value1: Literal["a", "b"]
+        c = P(value1="a")
+        json = c.model_dump_json()
+        c = P.model_validate_json(json)
+        self.assertEqual(c.value1, "a")
+        
 
 
 def fun():

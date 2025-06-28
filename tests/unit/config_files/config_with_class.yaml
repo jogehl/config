@@ -12,6 +12,7 @@ test:
   - value1
   - value2
   sub_key:
+    _config_class_type: test_config_io._TestClassConfigInnerWithConfigClass
     key: value
   sub_list_key:
   - _config_class_type: test_config_io._TestClassConfigInnerWithConfigClass
