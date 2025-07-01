@@ -189,6 +189,40 @@ class TestConfig(TestCase):
         n = N.model_validate_json(json)
         self.assertEqual(fun.__code__, n.func1.__code__)
 
+    def test_list_of_callables(self):
+        """Test that a list of callables is handled correctly."""
+
+        class Op(Configclass):
+            funcs: list[Callable]
+
+        n = Op(funcs=[fun, fun])
+        self.assertEqual(len(n.funcs), 2)
+        self.assertEqual(n.funcs[0].__code__, fun.__code__)
+        self.assertEqual(n.funcs[1].__code__, fun.__code__)
+
+        json = n.model_dump_json()
+        n = Op.model_validate_json(json)
+        self.assertEqual(len(n.funcs), 2)
+        self.assertEqual(n.funcs[0].__code__, fun.__code__)
+        self.assertEqual(n.funcs[1].__code__, fun.__code__)
+
+    def test_dict_of_callables(self):
+        """Test that a dictionary of callables is handled correctly."""
+
+        class P(Configclass):
+            funcs: dict[str, Callable]
+
+        n = P(funcs={"func1": fun, "func2": fun})
+        self.assertEqual(len(n.funcs), 2)
+        self.assertEqual(n.funcs["func1"].__code__, fun.__code__)
+        self.assertEqual(n.funcs["func2"].__code__, fun.__code__)
+
+        json = n.model_dump_json()
+        n = P.model_validate_json(json)
+        self.assertEqual(len(n.funcs), 2)
+        self.assertEqual(n.funcs["func1"].__code__, fun.__code__)
+        self.assertEqual(n.funcs["func2"].__code__, fun.__code__)
+
     def test_callable_type_from_other_file(self):
         """Test that the type attribute is added to the class."""
         from os.path import dirname

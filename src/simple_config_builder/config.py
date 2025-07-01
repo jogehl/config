@@ -62,6 +62,60 @@ class Configclass(BaseModel):
             f"{self.__class__.__module__}.{self.__class__.__name__}"
         )
 
+    def _callable_serialization(self, value: Any) -> dict[str, Any]:
+        """
+        Serialize a callable to a dictionary.
+
+        Parameters
+        ----------
+        value: The callable to serialize.
+
+        Returns
+        -------
+        A dictionary with the type, module, name and file path of the callable.
+        """
+        try:
+            importlib.import_module(value.__module__)
+            file_path = ""
+        except ImportError:
+            file_path = value.__code__.co_filename
+        return {
+            "type": "callable",
+            "module": value.__module__,
+            "name": value.__name__,
+            "file_path": file_path,
+        }
+
+    @classmethod
+    def _callable_deserialization(cls, value: dict[str, Any]) -> Any:
+        """
+        Deserialize a callable from a dictionary.
+
+        Parameters
+        ----------
+        value: The dictionary to deserialize.
+
+        Returns
+        -------
+        The callable represented by the dictionary.
+        """
+        module = value["module"]
+        name = value["name"]
+        file_path = value.get("file_path", "")
+        if file_path:
+            spec = importlib.util.spec_from_file_location(name, file_path)
+            if spec is None:
+                msg = f"Could not find spec for module {name} at {file_path}"
+                raise ImportError(msg)
+            module = importlib.util.module_from_spec(spec)
+            if spec.loader is None:
+                msg = f"Could not load module {name} at {file_path}"
+                raise ImportError(msg)
+            spec.loader.exec_module(module)
+        else:
+            module = importlib.import_module(module)
+        return getattr(module, name)
+
     @model_serializer(mode="wrap")
     def _wrap_ser(self, handler: SerializerFunctionWrapHandler):
         """Serialize the Configclass instance."""
@@ -76,17 +130,22 @@ class Configclass(BaseModel):
         for key, field_info in type(self).model_fields.items():
             value = getattr(self, key)
             if callable(value):
-                # try import the module
-                try:
-                    importlib.import_module(value.__module__)
-                    file_path = ""
-                except ImportError:
-                    file_path = value.__code__.co_filename
+                data[key] = self._callable_serialization(value)
+            elif isinstance(value, list):
+                # If the value is a list, serialize each callable in the list
+                data[key] = [
+                    self._callable_serialization(item)
+                    if callable(item)
+                    else item
+                    for item in value
+                ]
+            elif isinstance(value, dict):
+                # If the value is a dict, serialize each callable in the dict
                 data[key] = {
-                    "type": "callable",
-                    "module": value.__module__,
-                    "name": value.__name__,
-                    "file_path": file_path,
+                    sub_key: self._callable_serialization(sub_value)
+                    if callable(sub_value)
+                    else sub_value
+                    for sub_key, sub_value in value.items()
                 }
             else:
                 # Otherwise, use the standard serialization
@@ -105,27 +164,26 @@ class Configclass(BaseModel):
                 and "type" in value
                 and value["type"] == "callable"
             ):
-                module = value["module"]
-                name = value["name"]
-                file_path = value.get("file_path", "")
-                if file_path:
-                    spec = importlib.util.spec_from_file_location(
-                        name, file_path
-                    )
-                    if spec is None:
-                        msg = (
-                            f"Could not find spec for module"
-                            f"{name} at {file_path}"
+                data[key] = cls._callable_deserialization(value)
+            # check for list of Callable
+            elif isinstance(value, list):
+                for i, item in enumerate(value):
+                    if (
+                        isinstance(item, dict)
+                        and "type" in item
+                        and item["type"] == "callable"
+                    ):
+                        data[key][i] = cls._callable_deserialization(item)
+            elif isinstance(value, dict):
+                for sub_key, sub_value in value.items():
+                    if (
+                        isinstance(sub_value, dict)
+                        and "type" in sub_value
+                        and sub_value["type"] == "callable"
+                    ):
+                        data[key][sub_key] = cls._callable_deserialization(
+                            sub_value
                         )
-                        raise ImportError(msg)
-                    module = importlib.util.module_from_spec(spec)
-                    if spec.loader is None:
-                        msg = f"Could not load module" f"{name} at {file_path}"
-                        raise ImportError(msg)
-                    spec.loader.exec_module(module)
-                else:
-                    module = importlib.import_module(module)
-                data[key] = getattr(module, name)
         return data
 
     def __init_subclass__(cls, **kwargs):
