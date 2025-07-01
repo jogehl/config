@@ -7,10 +7,11 @@ The IO functions are used to read and write the configuration file.
 from typing import Any
 
 import importlib
+import os
 
 from pydantic import BaseModel
 
-from simple_config_builder.config import ConfigClassRegistry
+from simple_config_builder.config import ConfigClassRegistry, Configclass
 from simple_config_builder.config_types import ConfigTypes
 
 
@@ -38,7 +39,9 @@ def to_dict(obj: Any) -> dict | list | tuple:
     return obj
 
 
-def parse_config(config_file: str, config_type: ConfigTypes) -> dict:
+def parse_config(
+    config_file: str, config_type: ConfigTypes
+) -> dict | list | Configclass:
     """
     Parse the configuration file.
 
@@ -146,6 +149,9 @@ def parse_json(config_file: str):
     """
     Parse the JSON configuration file.
 
+    If there is currently no configuration file,
+    it will return an empty dictionary.
+
     Parameters
     ----------
     config_file: The configuration file path.
@@ -154,6 +160,8 @@ def parse_json(config_file: str):
     -------
     The parsed json data.
     """
+    if not os.path.exists(config_file):
+        return {}
     import json
 
     with open(config_file, "r") as f:
@@ -164,6 +172,9 @@ def parse_yaml(config_file: str):
     """
     Parse the YAML configuration file.
 
+    If there is currently no configuration file,
+    it will return an empty dictionary.
+
     Parameters
     ----------
     config_file: The configuration file path.
@@ -172,6 +183,8 @@ def parse_yaml(config_file: str):
     -------
     The parsed yaml data.
     """
+    if not os.path.exists(config_file):
+        return {}
     with open(config_file, "r") as f:
         import yaml
 
@@ -190,6 +203,8 @@ def parse_toml(config_file: str):
     -------
     The parsed toml data.
     """
+    if not os.path.exists(config_file):
+        return {}
     import toml
 
     with open(config_file, "r") as f:

@@ -79,8 +79,23 @@ async def load_config(config_path: str, request: Request):
 @api_router_v1.get("/get-config-classes")
 async def get_config_classes(request: Request):
     """Retrieve the list of configuration classes."""
+    from simple_config_builder import Configclass
+    from collections.abc import Callable
+
+    class N(Configclass):
+        func1: Callable
+
     classes = ConfigClassRegistry.list_classes()
     return {"classes": classes}
+
+
+@api_router_v1.get("/get-config-class/{class_name}")
+async def get_config_class(class_name: str, request: Request):
+    """Retrieve a specific configuration class by name."""
+    config_class = ConfigClassRegistry.get(class_name)
+    schema = config_class.model_json_schema()
+    # Store the class in session data
+    return schema
 
 
 app.include_router(api_router_v1)

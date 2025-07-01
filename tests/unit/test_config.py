@@ -228,11 +228,11 @@ class TestConfig(TestCase):
 
         class P(Configclass):
             value1: Literal["a", "b"]
+
         c = P(value1="a")
         json = c.model_dump_json()
         c = P.model_validate_json(json)
         self.assertEqual(c.value1, "a")
-        
 
 
 def fun():

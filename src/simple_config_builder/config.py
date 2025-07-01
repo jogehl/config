@@ -42,6 +42,7 @@ from pydantic import Field
 from typing import (
     TYPE_CHECKING,
     Any,
+    Type,
 )
 
 if TYPE_CHECKING:
@@ -138,6 +139,24 @@ class Configclass(BaseModel):
         ConfigClassRegistry.register(cls)
         return super().__init_subclass__(**kwargs)
 
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema, handler):
+        """Get the JSON schema for the Configclass."""
+        # Check for Callable fields and convert them to a string representation
+        for key, field_info in cls.model_fields.items():
+            print(core_schema)
+            if field_info.annotation == "Callable":
+                # Convert Callable to a string representation
+                core_schema = core_schema.copy()
+                print(core_schema)
+                core_schema["type"] = "string"
+                core_schema["description"] = (
+                    "A callable function, represented as a string."
+                )
+                core_schema["example"] = "module_name.function_name"
+
+        return super().__get_pydantic_json_schema__(core_schema, handler)
+
     model_config = ConfigDict(
         validate_assignment=True,
     )
@@ -218,7 +237,7 @@ class ConfigClassRegistry:
         )
 
     @classmethod
-    def get(cls, class_name) -> Configclass:
+    def get(cls, class_name) -> Type[Configclass]:
         """
         Get a class from the registry by name.
 
@@ -238,6 +257,28 @@ class ConfigClassRegistry:
             if class_to_register == class_name:
                 return cls.__registry[class_to_register]
         raise ValueError(f"{class_name} is not registered.")
+
+    @classmethod
+    def get_class_attributes(cls, class_name: str) -> dict[str, Any]:
+        """
+        Get the attributes of a class by name.
+
+        Parameters
+        ----------
+        class_name: The name of the class to get attributes from.
+
+        Returns
+        -------
+        A dictionary of attributes of the class.
+        """
+        config_class = cls.get(class_name)
+        if config_class is None:
+            raise ValueError(f"{class_name} is not registered.")
+        fields = {
+            key: value.annotation
+            for key, value in config_class.model_fields.items()
+        }
+        return fields
 
 
 __all__ = [

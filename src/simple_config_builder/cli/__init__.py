@@ -54,6 +54,6 @@ def start(host, port, directory):
 
     # Start the GUI backend server here
     import uvicorn
-    from simple_config.gui_backend.api import app
+    from simple_config_builder.gui_backend.api import app
 
     uvicorn.run(app, host=host, port=port)

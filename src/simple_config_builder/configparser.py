@@ -8,7 +8,9 @@ objects are updated.
 """
 
 from threading import Timer
+from typing import Any
 
+from simple_config_builder.config import Configclass
 from simple_config_builder.config_io import parse_config, write_config
 from simple_config_builder.config_types import ConfigTypes
 
@@ -21,6 +23,12 @@ class Configparser:
     construct the configuration objects. It gives the ability to autosave
     the configuration file when the configuration objects are updated.
     """
+
+    config_file: str
+    config_type: ConfigTypes | None
+    autosave: bool
+    autoreload: bool
+    config_data: dict | list | Configclass
 
     def __init__(
         self,
@@ -65,6 +73,39 @@ class Configparser:
             self._auto_reload_config()
         if self.autosave:
             self._auto_save_config()
+
+    @classmethod
+    def from_python(
+        cls,
+        data: dict | Configclass | list,
+        config_file: str,
+        config_type: ConfigTypes | None = None,
+        autosave: bool = False,
+        autoreload: bool = False,
+    ) -> "Configparser":
+        """
+        Create a Configparser instance from Python data.
+
+        Parameters
+        ----------
+        data: The configuration data as a dictionary, Configclass, or list.
+        config_file: The configuration file path.
+        config_type: The configuration type.
+        autosave: Autosave the configuration file. Defaults to False.
+        autoreload: Autoreload the configuration file. Defaults to False.
+
+        Returns
+        -------
+            A Configparser instance with the given data.
+        """
+        configparser = cls(
+            config_file=config_file,
+            config_type=config_type,
+            autosave=autosave,
+            autoreload=autoreload,
+        )
+        configparser.config_data = data
+        return configparser
 
     def _get_config_type(self) -> ConfigTypes:
         """
@@ -138,6 +179,94 @@ class Configparser:
     def __delitem__(self, key):
         """Delete the key from the configuration data."""
         del self.config_data[key]
+
+    def contains(
+        self, config_field_type: Any = None, config_field: str | None = None
+    ) -> bool:
+        """
+        Check if the configuration data contains the given field or type.
+
+        The method returns the first occurrence of the field or type in the
+        configuration data. Either `config_field_type` or `config_field`
+        must be provided, but not both.
+
+        Parameters
+        ----------
+        config_field_type: The type to check for in the configuration data.
+        config_field: The field to check for in the configuration data.
+
+        Returns
+        -------
+        bool: True if the configuration data contains the field or type.
+
+        Raises
+        ------
+        ValueError: If neither `config_field_type` nor `config_field` is
+                    provided.
+        ValueError: If both `config_field_type` and `config_field`
+                    are provided.
+        """
+
+        def _contains_type(config_data, config_type: Any) -> bool:
+            if isinstance(config_data, dict):
+                for key, value in config_data.items():
+                    if isinstance(value, config_type):
+                        return True
+                    if _contains_type(value, config_type):
+                        return True
+            elif isinstance(config_data, list):
+                for item in config_data:
+                    if isinstance(item, config_type):
+                        return True
+                    if _contains_type(item, config_type):
+                        return True
+            elif isinstance(config_data, Configclass):
+                if isinstance(config_data, config_type):
+                    return True
+                for name in type(config_data).model_fields.keys():
+                    if _contains_type(getattr(config_data, name), config_type):
+                        return True
+            elif isinstance(config_data, config_type):
+                return True
+            return False
+
+        def _contains_field(config_data, field: str) -> bool:
+            if isinstance(config_data, dict):
+                if field in config_data:
+                    return True
+                for value in config_data.values():
+                    if _contains_field(value, field):
+                        return True
+            elif isinstance(config_data, list):
+                if field in config_data:
+                    return True
+                for item in config_data:
+                    if _contains_field(item, field):
+                        return True
+            elif isinstance(config_data, Configclass):
+                if field in list(type(config_data).model_fields.keys()):
+                    return True
+                for name in type(config_data).model_fields.keys():
+                    if _contains_field(getattr(config_data, name), field):
+                        return True
+            return False
+
+        if config_field_type is None and config_field is None:
+            msg = (
+                "Either config_field_type or config_field " "must be provided."
+            )
+            raise ValueError(msg)
+        if config_field_type is not None and config_field is not None:
+            msg = (
+                "Only one of config_field_type or config_field"
+                "can be provided."
+            )
+            raise ValueError(msg)
+        if config_field is not None:
+            return _contains_field(self.config_data, config_field)
+        if config_field_type is not None:
+            return _contains_type(self.config_data, config_field_type)
+        return False
 
     def save(self):
         """Save the configuration data to the configuration file."""

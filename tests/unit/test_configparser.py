@@ -2,6 +2,7 @@
 
 from unittest import TestCase
 
+from simple_config_builder.config import Configclass
 from simple_config_builder.configparser import Configparser, ConfigTypes
 
 
@@ -112,3 +113,46 @@ class TestConfigparser(TestCase):
         with self.assertRaises(KeyError):
             _ = config["key"]
         self.assertEqual(config.config_data, {})
+
+    def test_configparser_from_python_dict(self):
+        """Test Configparser from python dict."""
+        config_data = {"key": "value", "key2": 42}
+        config = Configparser.from_python(
+            config_data, "tests/unit/config_files/configparser_from_dict.json"
+        )
+        self.assertEqual(
+            config.config_file,
+            "tests/unit/config_files/configparser_from_dict.json",
+        )
+        self.assertEqual(config.config_type, ConfigTypes.JSON)
+        self.assertFalse(config.autosave)
+        self.assertFalse(config.autoreload)
+        self.assertEqual(config.config_data, config_data)
+
+    def test_contains(self):
+        """Test contains."""
+
+        class _TestClassConfigWithConfigClass(Configclass):
+            """Test class with config class."""
+
+            key: str = "value"
+            key2: int = 42
+
+        parser = Configparser(
+            "tests/unit/config_files/configparser_with_class.json"
+        )
+        parser.config_data = {
+            "key": "value",
+            "class": _TestClassConfigWithConfigClass(),
+        }
+        self.assertTrue(
+            parser.contains(config_field_type=_TestClassConfigWithConfigClass)
+        )
+        self.assertTrue(parser.contains(config_field_type=int))
+        self.assertFalse(parser.contains(config_field_type=bool))
+        self.assertTrue(parser.contains(config_field_type=str))
+        self.assertFalse(
+            parser.contains(config_field="non_existent_non_existent")
+        )
+        self.assertTrue(parser.contains(config_field="key"))
+        self.assertTrue(parser.contains(config_field="key2"))
