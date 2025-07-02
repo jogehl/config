@@ -151,35 +151,6 @@ class Configparser:
 
         Timer(1, _reload_config).start()
 
-    def __setitem__(self, key, value):
-        """
-        Set the value for the given key in the configuration data.
-
-        Parameters
-        ----------
-        key: The key in the configuration data.
-        value: The value to set for the key.
-        """
-        self.config_data[key] = value
-
-    def __getitem__(self, key):
-        """
-        Get the value for the given key in the configuration data.
-
-        Parameters
-        ----------
-        key: The key in the configuration data.
-
-        Returns
-        -------
-        The value for the key.
-        """
-        return self.config_data[key]
-
-    def __delitem__(self, key):
-        """Delete the key from the configuration data."""
-        del self.config_data[key]
-
     def contains(
         self, config_field_type: Any = None, config_field: str | None = None
     ) -> bool:

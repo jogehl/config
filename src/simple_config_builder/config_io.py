@@ -109,7 +109,6 @@ def construct_config(config_data: Any):
             )
         try:
             config_class = ConfigClassRegistry.get(config_class_type)
-            print(f"Config class found: {config_class}")
         except ValueError:
             raise ValueError(
                 f"Please make sure the class '{config_class_type}' "
@@ -119,11 +118,9 @@ def construct_config(config_data: Any):
 
         # Log the expected fields of the config class
         expected_fields = set(config_class.__pydantic_fields__.keys())
-        print(f"Expected fields for {config_class}: {expected_fields}")
 
         # Log the actual keys in the config data
         actual_keys = set(config_data.keys())
-        print(f"Actual keys in config data: {actual_keys}")
 
         # Check for mismatched keys
         mismatched_keys = actual_keys - expected_fields
@@ -138,7 +135,6 @@ def construct_config(config_data: Any):
             for key, value in config_data.items()
             if key in expected_fields
         }
-        print(f"Filtered config data: {filtered_config_data}")
 
         # Pass filtered_config_data as a single dictionary argument
         return config_class.model_validate(filtered_config_data)

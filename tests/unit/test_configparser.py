@@ -93,25 +93,25 @@ class TestConfigparser(TestCase):
     def test_get_item(self):
         """Test get item."""
         config = Configparser("tests/unit/config_files/configparser.json")
-        self.assertEqual(config["key"], "value")
+        self.assertEqual(config.config_data["key"], "value")
         self.assertEqual(config.config_data, {"key": "value"})
 
     def test_set_item(self):
         """Test set item."""
         config = Configparser("tests/unit/config_files/configparser.json")
-        config["key"] = "value2"
+        config.config_data["key"] = "value2"
         self.assertEqual(config.config_data, {"key": "value2"})
-        self.assertEqual(config["key"], "value2")
+        self.assertEqual(config.config_data["key"], "value2")
         self.assertEqual(config.config_data, {"key": "value2"})
 
     def test_del_item(self):
         """Test del item."""
         config = Configparser("tests/unit/config_files/configparser.json")
-        del config["key"]
+        del config.config_data["key"]
         self.assertEqual(config.config_data, {})
         # catch the exception
         with self.assertRaises(KeyError):
-            _ = config["key"]
+            _ = config.config_data["key"]
         self.assertEqual(config.config_data, {})
 
     def test_configparser_from_python_dict(self):
