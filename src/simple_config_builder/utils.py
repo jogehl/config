@@ -11,6 +11,7 @@ def import_modules_from_directory(directory: str):
     """
     # Iterate over all files and subdirectories in the given directory
     import os
+    import sys
     import importlib.util
 
     for dirpath, dirnames, filenames in os.walk(directory):
@@ -44,8 +45,13 @@ def import_modules_from_directory(directory: str):
                                     f"module {module_name}: "
                                     f"loader is None"
                                 )
+                            # Add module to sys.modules before executing
+                            sys.modules[module_name] = module
                             spec.loader.exec_module(module)
                         except Exception as e:
+                            # Clean up sys.modules on error
+                            if module_name in sys.modules:
+                                del sys.modules[module_name]
                             raise ImportError(
                                 f"Error while importing "
                                 f"module {module_name}: {e}"

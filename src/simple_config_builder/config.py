@@ -28,6 +28,7 @@ Example:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import importlib.util
 
 from pydantic import (
@@ -44,6 +45,8 @@ from typing import (
     Any,
     Type,
 )
+
+from pydantic_core import PydanticUndefined
 
 if TYPE_CHECKING:
     from typing import ClassVar
@@ -202,11 +205,9 @@ class Configclass(BaseModel):
         """Get the JSON schema for the Configclass."""
         # Check for Callable fields and convert them to a string representation
         for key, field_info in cls.model_fields.items():
-            print(core_schema)
             if field_info.annotation == "Callable":
                 # Convert Callable to a string representation
                 core_schema = core_schema.copy()
-                print(core_schema)
                 core_schema["type"] = "string"
                 core_schema["description"] = (
                     "A callable function, represented as a string."
@@ -317,7 +318,7 @@ class ConfigClassRegistry:
         raise ValueError(f"{class_name} is not registered.")
 
     @classmethod
-    def get_class_attributes(cls, class_name: str) -> dict[str, Any]:
+    def get_class_attributes(cls, class_name: str) -> dict[str, _ConfigField]:
         """
         Get the attributes of a class by name.
 
@@ -333,10 +334,48 @@ class ConfigClassRegistry:
         if config_class is None:
             raise ValueError(f"{class_name} is not registered.")
         fields = {
-            key: value.annotation
+            key: _ConfigField(
+                name=key,
+                typ=value.annotation,
+                default=value.default if not isinstance(
+                    value.default, type(PydanticUndefined)) else None)
             for key, value in config_class.model_fields.items()
         }
         return fields
+
+    @classmethod
+    def get_subclasses(cls, class_name: str) -> list[str]:
+        """
+        Get all subclasses of a registered class.
+
+        Parameters
+        ----------
+        class_name: The name of the class to get subclasses for.
+
+        Returns
+        -------
+        A list of class names of all subclasses.
+        """
+        subclasses = []
+        for registered_class in cls.__registry.values():
+            if issubclass(registered_class, cls.get(class_name)):
+                subclasses.append(cls.get_class_str_from_class(registered_class))
+        return subclasses
+
+@dataclass
+class _ConfigField:
+    """Represents a field in a configuration class."""
+
+    name: str
+    typ: type[Any] | None
+    default: str|int|float|bool|list|dict|Configclass|None
+
+    @property
+    def is_required(self) -> bool:
+        """Check if the field is required (i.e., has no default value)."""
+        if self.typ is None:
+            return False
+        return isinstance(None, self.typ)
 
 
 __all__ = [
