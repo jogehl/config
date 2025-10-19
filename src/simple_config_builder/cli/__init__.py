@@ -3,7 +3,8 @@
 import click
 
 from simple_config_builder.__about__ import __version__
-from simple_config_builder.config import ConfigClassRegistry
+from simple_config_builder import ConfigClassRegistry, Configparser
+from simple_config_builder.api import make_api
 from simple_config_builder.utils import import_modules_from_directory
 
 
@@ -36,7 +37,10 @@ def config():
     default=".",
     help="The directory to search for configclasses.",
 )
-def start(host, port, directory):
+@click.argument(
+    'config_file', required=True
+)
+def start(host, port, directory, config_file):
     """Start the config CLI."""
     click.echo(
         "Registering all configclasses in current directory and subfolders..."
@@ -47,6 +51,8 @@ def start(host, port, directory):
     click.echo("Starting the config CLI-GUI...")
     import_modules_from_directory(directory)
 
+    app = make_api(config_file)
+
     click.echo(
         f"These are the registered configclasses: "
         f"{ConfigClassRegistry.list_classes()}"
@@ -54,6 +60,5 @@ def start(host, port, directory):
 
     # Start the GUI backend server here
     import uvicorn
-    from simple_config_builder.api.api import app
 
     uvicorn.run(app, host=host, port=port)
