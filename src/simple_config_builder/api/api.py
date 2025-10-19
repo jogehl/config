@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from simple_config_builder.__about__ import __version__
 from simple_config_builder.config import ConfigClassRegistry
 from simple_config_builder.configparser import Configparser
-from simple_config_builder.gui_backend.session_data import SessionData
+from simple_config_builder.api.session_data import SessionData
 
 app = FastAPI()
 api_router_v1 = APIRouter(prefix="/api/v1")
@@ -39,7 +39,7 @@ async def check_for_session_data(request, call_next):
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     """Return the favicon."""
-    return FileResponse("src/simple_config_builder/gui_backend/favicon.ico")
+    return FileResponse("src/simple_config_builder/api/favicon.ico")
 
 
 # define the API routes here
