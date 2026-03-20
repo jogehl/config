@@ -1,39 +1,60 @@
 """API routes for the GUI backend."""
 
-import uuid
-from fastapi import APIRouter, Request
-from fastapi import FastAPI
-from fastapi import Response
+from __future__ import annotations
+
+import hashlib
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from simple_config_builder.__about__ import __version__
 from simple_config_builder.config import ConfigClassRegistry
+from simple_config_builder.config_io import write_config
+from simple_config_builder.config_types import ConfigTypes
 from simple_config_builder.configparser import Configparser
-from simple_config_builder.gui_backend.session_data import SessionData
+from simple_config_builder.gui_backend.schema import normalize_json_schema
 
 app = FastAPI()
 api_router_v1 = APIRouter(prefix="/api/v1")
 
-session_data = SessionData()
+
+class LoadConfigRequest(BaseModel):
+    """Request body for loading a configuration."""
+
+    config_path: str
+    autoreload: bool = False
 
 
-@app.middleware("http")
-async def check_for_session_data(request, call_next):
-    """Middleware to check for session data."""
-    # get the cookied session key
-    session_key = request.cookies.get("session_key")
-    # log the session_key to the console
-    if session_key is not None:
-        request.state.session_key = session_key
-        session_data[session_key] = {}
-    else:
-        # redirect to /session if no session key is found
-        if request.url.path != "/api/v1/session":
-            return Response(
-                status_code=302, headers={"Location": "/api/v1/session"}
-            )
-    response = await call_next(request)
-    return response
+class ValidateConfigRequest(BaseModel):
+    """Request body for validating config payloads."""
+
+    class_name: str
+    data: dict[str, Any]
+
+
+class SaveConfigRequest(BaseModel):
+    """Request body for persisting a config payload."""
+
+    config_path: str
+    config_type: ConfigTypes
+    data: dict[str, Any] | list[Any]
+
+
+class ConfigMetadataRequest(BaseModel):
+    """Request body for config metadata lookup."""
+
+    config_path: str
+
+
+def _file_digest(path: Path) -> str:
+    """Return SHA256 digest for file contents."""
+    hasher = hashlib.sha256()
+    with path.open("rb") as file_obj:
+        hasher.update(file_obj.read())
+    return hasher.hexdigest()
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -42,7 +63,6 @@ async def favicon():
     return FileResponse("src/simple_config_builder/gui_backend/favicon.ico")
 
 
-# define the API routes here
 @app.get("/")
 async def root():
     """Root endpoint that returns a welcome message."""
@@ -55,47 +75,83 @@ async def version():
     return {"version": __version__}
 
 
-@api_router_v1.get("/session")
-async def new_session_data(response: Response):
-    """Create a new session and set a session cookie."""
-    session_key = str(uuid.uuid4())
-    session_data[session_key] = {}
-    response.set_cookie("session_key", session_key)
-    return {"session_key": session_key}
+@api_router_v1.get("/formats")
+async def formats():
+    """List supported output/input config formats."""
+    return {"formats": [fmt.value for fmt in ConfigTypes]}
 
 
-# post request which gets the path to the configuration file
 @api_router_v1.post("/load-config")
-async def load_config(config_path: str, request: Request):
-    """Load the configuration from the given path."""
+async def load_config(
+    body: LoadConfigRequest | None = None, config_path: str | None = None
+):
+    """Load the configuration from the given path (body preferred)."""
+    resolved_path = body.config_path if body is not None else config_path
+    autoreload = body.autoreload if body is not None else False
+    if resolved_path is None:
+        raise HTTPException(status_code=400, detail="config_path is required")
+
     try:
-        config = Configparser(config_path, autoreload=True)
-    except ValueError as e:
-        return {"error": str(e)}
-    session_data[request.state.session_key]["config"] = config
-    return {"config": config}
+        config = Configparser(resolved_path, autoreload=autoreload)
+        config_data = config.config_data
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    path = Path(resolved_path)
+    metadata = {
+        "exists": path.exists(),
+        "mtime_ns": path.stat().st_mtime_ns if path.exists() else None,
+        "sha256": _file_digest(path) if path.exists() else None,
+    }
+    return {"config": config_data, "metadata": metadata}
+
+
+@api_router_v1.post("/config-metadata")
+async def config_metadata(body: ConfigMetadataRequest):
+    """Get file metadata for multi-user change detection in UIs."""
+    path = Path(body.config_path)
+    return {
+        "exists": path.exists(),
+        "mtime_ns": path.stat().st_mtime_ns if path.exists() else None,
+        "sha256": _file_digest(path) if path.exists() else None,
+    }
 
 
 @api_router_v1.get("/get-config-classes")
-async def get_config_classes(request: Request):
+async def get_config_classes():
     """Retrieve the list of configuration classes."""
-    from simple_config_builder import Configclass
-    from collections.abc import Callable
-
-    class N(Configclass):
-        func1: Callable
-
     classes = ConfigClassRegistry.list_classes()
     return {"classes": classes}
 
 
 @api_router_v1.get("/get-config-class/{class_name}")
-async def get_config_class(class_name: str, request: Request):
+async def get_config_class(class_name: str):
     """Retrieve a specific configuration class by name."""
     config_class = ConfigClassRegistry.get(class_name)
     schema = config_class.model_json_schema()
-    # Store the class in session data
-    return schema
+    return {"schema": schema, "normalized_schema": normalize_json_schema(schema)}
+
+
+@api_router_v1.post("/validate-config")
+async def validate_config(body: ValidateConfigRequest):
+    """Validate a JSON payload against the selected config class."""
+    config_class = ConfigClassRegistry.get(body.class_name)
+    validated = config_class.model_validate(body.data)
+    return {"valid": True, "normalized": validated.model_dump()}
+
+
+@api_router_v1.post("/save-config")
+async def save_config(body: SaveConfigRequest):
+    """Persist a given config payload to disk."""
+    write_config(body.config_path, body.data, body.config_type)
+    path = Path(body.config_path)
+    return {
+        "saved": True,
+        "path": body.config_path,
+        "type": body.config_type.value,
+        "mtime_ns": path.stat().st_mtime_ns if path.exists() else None,
+        "sha256": _file_digest(path) if path.exists() else None,
+    }
 
 
 app.include_router(api_router_v1)
