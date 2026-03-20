@@ -1,0 +1,79 @@
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: #f5f7fb;
+}
+
+main {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+h1 {
+  margin: 0;
+}
+
+.subtitle {
+  color: #475569;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.card {
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #d7dfeb;
+  padding: 16px;
+}
+
+.controls {
+  margin-bottom: 16px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  padding: 8px 10px;
+}
+
+.warning {
+  color: #b45309;
+  font-weight: 600;
+}
+
+
+.nested-fieldset {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.nested-fieldset > legend {
+  font-weight: 600;
+  padding: 0 6px;
+}
