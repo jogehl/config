@@ -33,7 +33,7 @@ simple_config_builder start --host localhost --port 8000
 
 The API is stateless by default (no session token required).
 
-A full React + TypeScript UI app is available in `examples/ts-ui` (including `src/App.tsx`).
+A full React + TypeScript UI app is integrated in `ui/` (including `ui/src/App.tsx`).
 
 ## License
 

@@ -24,7 +24,7 @@ simple_config_builder start --host 0.0.0.0 --port 8000
 2. Start UI:
 
 ```bash
-cd examples/ts-ui
+cd ui
 npm install
 npm run dev
 ```
