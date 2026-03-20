@@ -36,6 +36,21 @@ class ApiTest(TestCase):
         assert response.status_code == 200
         assert response.json()["formats"] == ["json", "yaml", "toml"]
 
+    def test_cors_preflight(self):
+        """Test CORS preflight response headers."""
+        response = self.client.options(
+            "/api/v1/formats",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] in (
+            "*",
+            "http://localhost:5173",
+        )
+
     def test_root(self):
         """Test the root API route."""
         response = self.client.get("/")

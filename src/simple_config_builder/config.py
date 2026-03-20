@@ -32,6 +32,7 @@ import importlib.util
 
 from pydantic import (
     BaseModel,
+    PydanticInvalidForJsonSchema,
     PrivateAttr,
     SerializerFunctionWrapHandler,
     model_serializer,
@@ -203,7 +204,15 @@ class Configclass(BaseModel):
     @classmethod
     def __get_pydantic_json_schema__(cls, core_schema, handler):
         """Get the JSON schema for the Configclass."""
-        schema = super().__get_pydantic_json_schema__(core_schema, handler)
+        try:
+            schema = super().__get_pydantic_json_schema__(core_schema, handler)
+        except PydanticInvalidForJsonSchema:
+            schema = {
+                "title": cls.__name__,
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
         properties = schema.get("properties", {})
 
         def _is_callable_annotation(annotation: Any) -> bool:
@@ -212,12 +221,24 @@ class Configclass(BaseModel):
                 return True
             if origin is CollectionsCallable:
                 return True
+            if origin in (tuple, list, set):
+                args = get_args(annotation)
+                return bool(args and _is_callable_annotation(args[0]))
+            if origin is dict:
+                args = get_args(annotation)
+                return bool(len(args) == 2 and _is_callable_annotation(args[1]))
+            if str(origin).endswith("UnionType") or str(origin).endswith(
+                "Union"
+            ):
+                return any(
+                    _is_callable_annotation(arg)
+                    for arg in get_args(annotation)
+                    if arg is not type(None)
+                )
             return False
 
         for key, field_info in cls.model_fields.items():
-            prop_schema = properties.get(key)
-            if prop_schema is None:
-                continue
+            prop_schema = properties.setdefault(key, {})
 
             annotation = field_info.annotation
             origin = get_origin(annotation)
@@ -260,6 +281,22 @@ class Configclass(BaseModel):
                         "additionalProperties": callable_ref_schema,
                     }
                 )
+            elif not prop_schema:
+                if annotation in (str,):
+                    prop_schema.update({"type": "string"})
+                elif annotation in (int,):
+                    prop_schema.update({"type": "integer"})
+                elif annotation in (float,):
+                    prop_schema.update({"type": "number"})
+                elif annotation in (bool,):
+                    prop_schema.update({"type": "boolean"})
+                elif origin is list:
+                    prop_schema.update({"type": "array"})
+                elif origin is dict:
+                    prop_schema.update({"type": "object"})
+
+            if field_info.is_required() and key not in schema["required"]:
+                schema["required"].append(key)
 
         return schema
 
