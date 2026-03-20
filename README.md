@@ -33,7 +33,7 @@ simple_config_builder start --host localhost --port 8000
 
 The API is stateless by default (no session token required).
 
-A TypeScript starter API client is available at `examples/ts-ui/src/apiClient.ts`.
+A full React + TypeScript UI app is available in `examples/ts-ui` (including `src/App.tsx`).
 
 ## License
 

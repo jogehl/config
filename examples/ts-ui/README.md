@@ -1,8 +1,19 @@
-# TypeScript UI starter
+# TypeScript React UI (full app)
 
-This folder contains a lightweight TypeScript API client for the GUI backend.
+This is a complete React + TypeScript UI for the `simple_config_builder` backend.
 
-## Quick start
+## What users can do
+
+- enter a config file path
+- load config data and inspect metadata
+- choose a registered `Configclass`
+- edit values via schema-driven form inputs
+- edit the full config tree as raw JSON
+- validate against selected class
+- save in inferred file format (`json`/`yaml`/`toml`)
+- see warning if file changed externally (multi-user/process-safe signal)
+
+## Run
 
 1. Start backend:
 
@@ -10,13 +21,12 @@ This folder contains a lightweight TypeScript API client for the GUI backend.
 simple_config_builder start --host 0.0.0.0 --port 8000
 ```
 
-2. Use `ConfigBuilderApiClient` in your UI app to:
-- list classes
-- fetch JSON schema / normalized schema
-- validate drafts
-- save configs
-- poll file metadata (`mtime_ns`, `sha256`) to detect external changes
+2. Start UI:
 
-## Notes
+```bash
+cd examples/ts-ui
+npm install
+npm run dev
+```
 
-The backend is stateless by default (no UI session token handling required).
+The app runs on `http://localhost:5173` by default and talks to backend at `http://localhost:8000/api/v1`.
