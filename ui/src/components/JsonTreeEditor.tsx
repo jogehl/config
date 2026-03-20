@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { JsonValue } from "../types";
 
 type Props = {
@@ -8,6 +8,10 @@ type Props = {
 
 export function JsonTreeEditor({ value, onChange }: Props) {
   const [draft, setDraft] = useState(JSON.stringify(value, null, 2));
+
+  useEffect(() => {
+    setDraft(JSON.stringify(value, null, 2));
+  }, [value]);
 
   return (
     <div className="card">

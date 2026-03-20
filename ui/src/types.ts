@@ -16,6 +16,7 @@ export type NormalizedField = {
   enum?: JsonValue[];
   items?: Record<string, unknown>;
   raw: Record<string, unknown>;
+  children: NormalizedField[];
 };
 
 export type ClassSchemaResponse = {

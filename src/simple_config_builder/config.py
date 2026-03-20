@@ -43,7 +43,10 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Type,
+    get_args,
+    get_origin,
 )
+from collections.abc import Callable as CollectionsCallable
 
 if TYPE_CHECKING:
     from typing import ClassVar
@@ -200,20 +203,71 @@ class Configclass(BaseModel):
     @classmethod
     def __get_pydantic_json_schema__(cls, core_schema, handler):
         """Get the JSON schema for the Configclass."""
-        # Check for Callable fields and convert them to a string representation
-        for key, field_info in cls.model_fields.items():
-            print(core_schema)
-            if field_info.annotation == "Callable":
-                # Convert Callable to a string representation
-                core_schema = core_schema.copy()
-                print(core_schema)
-                core_schema["type"] = "string"
-                core_schema["description"] = (
-                    "A callable function, represented as a string."
-                )
-                core_schema["example"] = "module_name.function_name"
+        schema = super().__get_pydantic_json_schema__(core_schema, handler)
+        properties = schema.get("properties", {})
 
-        return super().__get_pydantic_json_schema__(core_schema, handler)
+        def _is_callable_annotation(annotation: Any) -> bool:
+            origin = get_origin(annotation)
+            if annotation in (CollectionsCallable, "Callable"):
+                return True
+            if origin is CollectionsCallable:
+                return True
+            return False
+
+        for key, field_info in cls.model_fields.items():
+            prop_schema = properties.get(key)
+            if prop_schema is None:
+                continue
+
+            annotation = field_info.annotation
+            origin = get_origin(annotation)
+            args = get_args(annotation)
+
+            if _is_callable_annotation(annotation):
+                prop_schema.clear()
+                prop_schema.update(
+                    {
+                        "type": "string",
+                        "title": key,
+                        "description": (
+                            "Callable reference, e.g. "
+                            "'module_name.function_name'."
+                        ),
+                        "examples": ["module_name.function_name"],
+                    }
+                )
+            elif origin is list and args and _is_callable_annotation(args[0]):
+                prop_schema.clear()
+                prop_schema.update(
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "description": (
+                                "Callable reference, e.g. "
+                                "'module_name.function_name'."
+                            ),
+                        },
+                    }
+                )
+            elif origin is dict and len(args) == 2 and _is_callable_annotation(
+                args[1]
+            ):
+                prop_schema.clear()
+                prop_schema.update(
+                    {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string",
+                            "description": (
+                                "Callable reference, e.g. "
+                                "'module_name.function_name'."
+                            ),
+                        },
+                    }
+                )
+
+        return schema
 
     model_config = ConfigDict(
         validate_assignment=True,

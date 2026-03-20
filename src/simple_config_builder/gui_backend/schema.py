@@ -5,6 +5,62 @@ from __future__ import annotations
 from typing import Any
 
 
+def _resolve_ref(schema: dict[str, Any], ref: str) -> dict[str, Any]:
+    """Resolve local JSON schema references like '#/$defs/MyClass'."""
+    if not ref.startswith("#/"):
+        return {}
+    current: Any = schema
+    for part in ref[2:].split("/"):
+        if not isinstance(current, dict):
+            return {}
+        current = current.get(part)
+        if current is None:
+            return {}
+    return current if isinstance(current, dict) else {}
+
+
+def _normalize_field(
+    root_schema: dict[str, Any],
+    name: str,
+    field_schema: dict[str, Any],
+    required: set[str],
+) -> dict[str, Any]:
+    """Normalize a single field schema recursively."""
+    resolved_schema = field_schema
+    if "$ref" in field_schema:
+        resolved = _resolve_ref(root_schema, field_schema["$ref"])
+        if resolved:
+            resolved_schema = resolved
+
+    field_type = resolved_schema.get("type")
+    if field_type is None and "properties" in resolved_schema:
+        field_type = "object"
+
+    normalized: dict[str, Any] = {
+        "name": name,
+        "required": name in required,
+        "type": field_type,
+        "title": resolved_schema.get("title", name),
+        "description": resolved_schema.get("description", ""),
+        "default": resolved_schema.get("default"),
+        "enum": resolved_schema.get("enum"),
+        "items": resolved_schema.get("items"),
+        "raw": resolved_schema,
+        "children": [],
+    }
+
+    if field_type == "object":
+        child_properties = resolved_schema.get("properties", {})
+        child_required = set(resolved_schema.get("required", []))
+        normalized["children"] = [
+            _normalize_field(root_schema, child_name, child_schema, child_required)
+            for child_name, child_schema in child_properties.items()
+            if isinstance(child_schema, dict)
+        ]
+
+    return normalized
+
+
 def normalize_json_schema(schema: dict[str, Any]) -> dict[str, Any]:
     """Normalize pydantic JSON schema for schema-driven TypeScript UIs."""
     properties = schema.get("properties", {})
@@ -12,18 +68,10 @@ def normalize_json_schema(schema: dict[str, Any]) -> dict[str, Any]:
 
     normalized_fields: list[dict[str, Any]] = []
     for name, field_schema in properties.items():
+        if not isinstance(field_schema, dict):
+            continue
         normalized_fields.append(
-            {
-                "name": name,
-                "required": name in required,
-                "type": field_schema.get("type"),
-                "title": field_schema.get("title", name),
-                "description": field_schema.get("description", ""),
-                "default": field_schema.get("default"),
-                "enum": field_schema.get("enum"),
-                "items": field_schema.get("items"),
-                "raw": field_schema,
-            }
+            _normalize_field(schema, name, field_schema, required)
         )
 
     return {

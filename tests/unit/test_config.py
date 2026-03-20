@@ -189,6 +189,26 @@ class TestConfig(TestCase):
         n = N.model_validate_json(json)
         self.assertEqual(fun.__code__, n.func1.__code__)
 
+    def test_callable_json_schema_representation(self):
+        """Test Callable fields are represented as string in JSON schema."""
+
+        class NSchema(Configclass):
+            func1: Callable
+            funcs: list[Callable]
+            mapping: dict[str, Callable]
+
+        schema = NSchema.model_json_schema()
+        self.assertEqual(schema["properties"]["func1"]["type"], "string")
+        self.assertEqual(schema["properties"]["funcs"]["type"], "array")
+        self.assertEqual(
+            schema["properties"]["funcs"]["items"]["type"], "string"
+        )
+        self.assertEqual(schema["properties"]["mapping"]["type"], "object")
+        self.assertEqual(
+            schema["properties"]["mapping"]["additionalProperties"]["type"],
+            "string",
+        )
+
     def test_list_of_callables(self):
         """Test that a list of callables is handled correctly."""
 
