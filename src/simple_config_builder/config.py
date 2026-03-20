@@ -32,6 +32,7 @@ import importlib.util
 
 from pydantic import (
     BaseModel,
+    PydanticInvalidForJsonSchema,
     PrivateAttr,
     SerializerFunctionWrapHandler,
     model_serializer,
@@ -43,7 +44,10 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Type,
+    get_args,
+    get_origin,
 )
+from collections.abc import Callable as CollectionsCallable
 
 if TYPE_CHECKING:
     from typing import ClassVar
@@ -200,20 +204,101 @@ class Configclass(BaseModel):
     @classmethod
     def __get_pydantic_json_schema__(cls, core_schema, handler):
         """Get the JSON schema for the Configclass."""
-        # Check for Callable fields and convert them to a string representation
-        for key, field_info in cls.model_fields.items():
-            print(core_schema)
-            if field_info.annotation == "Callable":
-                # Convert Callable to a string representation
-                core_schema = core_schema.copy()
-                print(core_schema)
-                core_schema["type"] = "string"
-                core_schema["description"] = (
-                    "A callable function, represented as a string."
-                )
-                core_schema["example"] = "module_name.function_name"
+        try:
+            schema = super().__get_pydantic_json_schema__(core_schema, handler)
+        except PydanticInvalidForJsonSchema:
+            schema = {
+                "title": cls.__name__,
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
+        properties = schema.get("properties", {})
 
-        return super().__get_pydantic_json_schema__(core_schema, handler)
+        def _is_callable_annotation(annotation: Any) -> bool:
+            origin = get_origin(annotation)
+            if annotation in (CollectionsCallable, "Callable"):
+                return True
+            if origin is CollectionsCallable:
+                return True
+            if origin in (tuple, list, set):
+                args = get_args(annotation)
+                return bool(args and _is_callable_annotation(args[0]))
+            if origin is dict:
+                args = get_args(annotation)
+                return bool(len(args) == 2 and _is_callable_annotation(args[1]))
+            if str(origin).endswith("UnionType") or str(origin).endswith(
+                "Union"
+            ):
+                return any(
+                    _is_callable_annotation(arg)
+                    for arg in get_args(annotation)
+                    if arg is not type(None)
+                )
+            return False
+
+        for key, field_info in cls.model_fields.items():
+            prop_schema = properties.setdefault(key, {})
+
+            annotation = field_info.annotation
+            origin = get_origin(annotation)
+            args = get_args(annotation)
+
+            callable_ref_schema = {
+                "type": "object",
+                "title": key,
+                "description": (
+                    "Callable reference object used by config serialization."
+                ),
+                "properties": {
+                    "type": {"type": "string", "const": "callable"},
+                    "module": {"type": "string"},
+                    "name": {"type": "string"},
+                    "file_path": {"type": "string"},
+                },
+                "required": ["type", "module", "name"],
+                "additionalProperties": False,
+            }
+
+            if _is_callable_annotation(annotation):
+                prop_schema.clear()
+                prop_schema.update(callable_ref_schema)
+            elif origin is list and args and _is_callable_annotation(args[0]):
+                prop_schema.clear()
+                prop_schema.update(
+                    {
+                        "type": "array",
+                        "items": callable_ref_schema,
+                    }
+                )
+            elif origin is dict and len(args) == 2 and _is_callable_annotation(
+                args[1]
+            ):
+                prop_schema.clear()
+                prop_schema.update(
+                    {
+                        "type": "object",
+                        "additionalProperties": callable_ref_schema,
+                    }
+                )
+            elif not prop_schema:
+                if annotation in (str,):
+                    prop_schema.update({"type": "string"})
+                elif annotation in (int,):
+                    prop_schema.update({"type": "integer"})
+                elif annotation in (float,):
+                    prop_schema.update({"type": "number"})
+                elif annotation in (bool,):
+                    prop_schema.update({"type": "boolean"})
+                elif origin is list:
+                    prop_schema.update({"type": "array"})
+                elif origin is dict:
+                    prop_schema.update({"type": "object"})
+
+            if field_info.is_required() and key not in schema["required"]:
+                schema["required"].append(key)
+
+        return schema
 
     model_config = ConfigDict(
         validate_assignment=True,

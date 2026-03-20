@@ -5,3 +5,9 @@
 # exclude all __pycache__ directories
 __pycache__/
 /dist
+
+# UI artifacts
+ui/node_modules/
+ui/dist/
+ui/package-lock.json
+ui/*.tsbuildinfo
