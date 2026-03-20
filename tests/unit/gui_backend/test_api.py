@@ -85,6 +85,18 @@ class ApiTest(TestCase):
         assert response.json()["exists"] is True
         assert response.json()["sha256"] is not None
 
+    def test_config_metadata_preflight(self):
+        """Test CORS preflight handling for config metadata endpoint."""
+        response = self.client.options(
+            "/api/v1/config-metadata",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == "*"
+
     def test_get_config_classes(self):
         """Test the get-config-classes API route."""
         response = self.client.get("/api/v1/get-config-classes")
