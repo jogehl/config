@@ -93,6 +93,14 @@ function defaultValueForField(field: NormalizedField): JsonValue {
   return "";
 }
 
+function defaultObjectFromChildren(children: NormalizedField[]): Record<string, JsonValue> {
+  const result: Record<string, JsonValue> = {};
+  for (const child of children) {
+    result[child.name] = defaultValueForField(child);
+  }
+  return result;
+}
+
 function FieldNode({
   field,
   path,
@@ -135,6 +143,9 @@ function FieldNode({
 
   if (field.type === "array") {
     const arr = Array.isArray(current) ? current : [];
+    const itemChildren = Array.isArray(field.item_children)
+      ? field.item_children
+      : [];
     return (
       <fieldset className="nested-fieldset">
         <legend>{field.title}</legend>
@@ -144,7 +155,12 @@ function FieldNode({
           <button
             type="button"
             onClick={() => {
-              const next = [...arr, {} as JsonValue];
+              const next = [
+                ...arr,
+                itemChildren.length > 0
+                  ? (defaultObjectFromChildren(itemChildren) as JsonValue)
+                  : ({} as JsonValue),
+              ];
               onChange(setAtPath(rootValue, fullPath, next));
             }}
           >
@@ -153,20 +169,60 @@ function FieldNode({
         </div>
         {arr.map((item, index) => (
           <div className="array-item" key={`${fullPath.join(".")}-${index}`}>
-            <textarea
-              rows={4}
-              value={JSON.stringify(item, null, 2)}
-              onChange={(event) => {
-                try {
-                  const parsed = JSON.parse(event.target.value) as JsonValue;
-                  const next = [...arr];
-                  next[index] = parsed;
-                  onChange(setAtPath(rootValue, fullPath, next));
-                } catch {
-                  // keep textarea editable without forcing valid json at each keystroke
-                }
-              }}
-            />
+            {itemChildren.length > 0 &&
+            typeof item === "object" &&
+            item !== null &&
+            !Array.isArray(item) ? (
+              itemChildren.map((child) => {
+                const childValue = (item as Record<string, JsonValue>)[child.name];
+                return (
+                  <label className="field" key={`${index}-${child.name}`}>
+                    <span>
+                      {child.title} {child.required ? "*" : ""}
+                    </span>
+                    <small>Type: {formatTypeLabel(child)}</small>
+                    <input
+                      type={
+                        child.type === "number" || child.type === "integer"
+                          ? "number"
+                          : "text"
+                      }
+                      value={
+                        typeof childValue === "string"
+                          ? childValue
+                          : childValue === undefined
+                          ? ""
+                          : JSON.stringify(childValue)
+                      }
+                      onChange={(event) => {
+                        const parsed = parsePrimitive(event.target.value, child.type);
+                        const next = [...arr];
+                        next[index] = {
+                          ...(item as Record<string, JsonValue>),
+                          [child.name]: parsed,
+                        } as JsonValue;
+                        onChange(setAtPath(rootValue, fullPath, next));
+                      }}
+                    />
+                  </label>
+                );
+              })
+            ) : (
+              <textarea
+                rows={4}
+                value={JSON.stringify(item, null, 2)}
+                onChange={(event) => {
+                  try {
+                    const parsed = JSON.parse(event.target.value) as JsonValue;
+                    const next = [...arr];
+                    next[index] = parsed;
+                    onChange(setAtPath(rootValue, fullPath, next));
+                  } catch {
+                    // keep textarea editable without forcing valid json at each keystroke
+                  }
+                }}
+              />
+            )}
             <button
               type="button"
               onClick={() => {
@@ -215,6 +271,9 @@ function FieldNode({
       current && typeof current === "object" && !Array.isArray(current)
         ? (current as Record<string, JsonValue>)
         : {};
+    const valueChildren = Array.isArray(field.value_children)
+      ? field.value_children
+      : [];
 
     return (
       <fieldset className="nested-fieldset">
@@ -236,7 +295,10 @@ function FieldNode({
               }
               const next = {
                 ...mapValue,
-                [newMapKey]: defaultValueForField(field),
+                [newMapKey]:
+                  valueChildren.length > 0
+                    ? (defaultObjectFromChildren(valueChildren) as JsonValue)
+                    : defaultValueForField(field),
               };
               onChange(setAtPath(rootValue, fullPath, next));
               setNewMapKey("");
@@ -249,19 +311,61 @@ function FieldNode({
         {Object.entries(mapValue).map(([key, item]) => (
           <div className="map-item" key={`${fullPath.join(".")}-${key}`}>
             <strong>{key}</strong>
-            <textarea
-              rows={4}
-              value={JSON.stringify(item, null, 2)}
-              onChange={(event) => {
-                try {
-                  const parsed = JSON.parse(event.target.value) as JsonValue;
-                  const next = { ...mapValue, [key]: parsed };
-                  onChange(setAtPath(rootValue, fullPath, next));
-                } catch {
-                  // keep editable while invalid json
-                }
-              }}
-            />
+            {valueChildren.length > 0 &&
+            typeof item === "object" &&
+            item !== null &&
+            !Array.isArray(item) ? (
+              valueChildren.map((child) => {
+                const childValue = (item as Record<string, JsonValue>)[child.name];
+                return (
+                  <label className="field" key={`${key}-${child.name}`}>
+                    <span>
+                      {child.title} {child.required ? "*" : ""}
+                    </span>
+                    <small>Type: {formatTypeLabel(child)}</small>
+                    <input
+                      type={
+                        child.type === "number" || child.type === "integer"
+                          ? "number"
+                          : "text"
+                      }
+                      value={
+                        typeof childValue === "string"
+                          ? childValue
+                          : childValue === undefined
+                          ? ""
+                          : JSON.stringify(childValue)
+                      }
+                      onChange={(event) => {
+                        const parsed = parsePrimitive(event.target.value, child.type);
+                        const next = {
+                          ...mapValue,
+                          [key]: {
+                            ...(item as Record<string, JsonValue>),
+                            [child.name]: parsed,
+                          } as JsonValue,
+                        };
+                        onChange(setAtPath(rootValue, fullPath, next));
+                      }}
+                    />
+                  </label>
+                );
+              })
+            ) : (
+              <textarea
+                rows={4}
+                value={JSON.stringify(item, null, 2)}
+                onChange={(event) => {
+                  try {
+                    const parsed = JSON.parse(event.target.value) as JsonValue;
+                    const next = { ...mapValue, [key]: parsed };
+                    onChange(setAtPath(rootValue, fullPath, next));
+                  } catch {
+                    // keep editable while invalid json
+                  }
+                }}
+              />
+            )}
             <button
               type="button"
               onClick={() => {

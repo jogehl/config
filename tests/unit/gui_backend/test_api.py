@@ -16,6 +16,20 @@ class _ApiConfigClass(Configclass):
     func: Callable | None = None
 
 
+class _NestedItem(Configclass):
+    """Nested config class for list/dict schema checks."""
+
+    name: str
+    size: int
+
+
+class _ContainerClass(Configclass):
+    """Container config class for list/dict nested checks."""
+
+    items: list[_NestedItem]
+    mapping: dict[str, _NestedItem]
+
+
 class ApiTest(TestCase):
     """Test the API routes."""
 
@@ -99,6 +113,21 @@ class ApiTest(TestCase):
         assert response.status_code == 200
         assert response.json()["schema"] is not None
         assert response.json()["normalized_schema"] is not None
+
+    def test_normalized_schema_contains_list_and_dict_children(self):
+        """List/dict of Configclass should include nested child metadata."""
+        class_name = f"{_ContainerClass.__module__}.{_ContainerClass.__name__}"
+        response = self.client.get(f"/api/v1/get-config-class/{class_name}")
+        assert response.status_code == 200
+        fields = response.json()["normalized_schema"]["fields"]
+
+        items_field = next(field for field in fields if field["name"] == "items")
+        mapping_field = next(
+            field for field in fields if field["name"] == "mapping"
+        )
+
+        assert len(items_field["item_children"]) > 0
+        assert len(mapping_field["value_children"]) > 0
 
     def test_validate_config(self):
         """Test config validation endpoint."""

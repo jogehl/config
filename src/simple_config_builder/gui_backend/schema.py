@@ -47,6 +47,8 @@ def _normalize_field(
         "items": resolved_schema.get("items"),
         "raw": resolved_schema,
         "children": [],
+        "item_children": [],
+        "value_children": [],
     }
 
     if field_type == "object":
@@ -57,6 +59,49 @@ def _normalize_field(
             for child_name, child_schema in child_properties.items()
             if isinstance(child_schema, dict)
         ]
+        additional_properties = resolved_schema.get("additionalProperties")
+        if isinstance(additional_properties, dict):
+            value_schema = additional_properties
+            if "$ref" in value_schema:
+                resolved = _resolve_ref(root_schema, value_schema["$ref"])
+                if resolved:
+                    value_schema = resolved
+            if isinstance(value_schema.get("properties"), dict):
+                value_required = set(value_schema.get("required", []))
+                normalized["value_children"] = [
+                    _normalize_field(
+                        root_schema,
+                        child_name,
+                        child_schema,
+                        value_required,
+                    )
+                    for child_name, child_schema in value_schema[
+                        "properties"
+                    ].items()
+                    if isinstance(child_schema, dict)
+                ]
+    elif field_type == "array":
+        items = resolved_schema.get("items")
+        if isinstance(items, dict):
+            item_schema = items
+            if "$ref" in item_schema:
+                resolved = _resolve_ref(root_schema, item_schema["$ref"])
+                if resolved:
+                    item_schema = resolved
+            if isinstance(item_schema.get("properties"), dict):
+                item_required = set(item_schema.get("required", []))
+                normalized["item_children"] = [
+                    _normalize_field(
+                        root_schema,
+                        child_name,
+                        child_schema,
+                        item_required,
+                    )
+                    for child_name, child_schema in item_schema[
+                        "properties"
+                    ].items()
+                    if isinstance(child_schema, dict)
+                ]
 
     return normalized
 

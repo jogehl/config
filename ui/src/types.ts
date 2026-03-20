@@ -17,6 +17,8 @@ export type NormalizedField = {
   items?: Record<string, unknown>;
   raw: Record<string, unknown>;
   children: NormalizedField[];
+  item_children: NormalizedField[];
+  value_children: NormalizedField[];
 };
 
 export type ClassSchemaResponse = {
