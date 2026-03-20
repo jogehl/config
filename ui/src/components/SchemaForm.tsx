@@ -174,37 +174,18 @@ function FieldNode({
             item !== null &&
             !Array.isArray(item) ? (
               itemChildren.map((child) => {
-                const childValue = (item as Record<string, JsonValue>)[child.name];
                 return (
-                  <label className="field" key={`${index}-${child.name}`}>
-                    <span>
-                      {child.title} {child.required ? "*" : ""}
-                    </span>
-                    <small>Type: {formatTypeLabel(child)}</small>
-                    <input
-                      type={
-                        child.type === "number" || child.type === "integer"
-                          ? "number"
-                          : "text"
-                      }
-                      value={
-                        typeof childValue === "string"
-                          ? childValue
-                          : childValue === undefined
-                          ? ""
-                          : JSON.stringify(childValue)
-                      }
-                      onChange={(event) => {
-                        const parsed = parsePrimitive(event.target.value, child.type);
-                        const next = [...arr];
-                        next[index] = {
-                          ...(item as Record<string, JsonValue>),
-                          [child.name]: parsed,
-                        } as JsonValue;
-                        onChange(setAtPath(rootValue, fullPath, next));
-                      }}
-                    />
-                  </label>
+                  <FieldNode
+                    key={`${index}-${child.name}`}
+                    field={child}
+                    path={["__item__"]}
+                    rootValue={{ __item__: item as JsonValue }}
+                    onChange={(nextWrapped) => {
+                      const next = [...arr];
+                      next[index] = nextWrapped.__item__;
+                      onChange(setAtPath(rootValue, fullPath, next));
+                    }}
+                  />
                 );
               })
             ) : (
@@ -316,39 +297,20 @@ function FieldNode({
             item !== null &&
             !Array.isArray(item) ? (
               valueChildren.map((child) => {
-                const childValue = (item as Record<string, JsonValue>)[child.name];
                 return (
-                  <label className="field" key={`${key}-${child.name}`}>
-                    <span>
-                      {child.title} {child.required ? "*" : ""}
-                    </span>
-                    <small>Type: {formatTypeLabel(child)}</small>
-                    <input
-                      type={
-                        child.type === "number" || child.type === "integer"
-                          ? "number"
-                          : "text"
-                      }
-                      value={
-                        typeof childValue === "string"
-                          ? childValue
-                          : childValue === undefined
-                          ? ""
-                          : JSON.stringify(childValue)
-                      }
-                      onChange={(event) => {
-                        const parsed = parsePrimitive(event.target.value, child.type);
-                        const next = {
-                          ...mapValue,
-                          [key]: {
-                            ...(item as Record<string, JsonValue>),
-                            [child.name]: parsed,
-                          } as JsonValue,
-                        };
-                        onChange(setAtPath(rootValue, fullPath, next));
-                      }}
-                    />
-                  </label>
+                  <FieldNode
+                    key={`${key}-${child.name}`}
+                    field={child}
+                    path={["__value__"]}
+                    rootValue={{ __value__: item as JsonValue }}
+                    onChange={(nextWrapped) => {
+                      const next = {
+                        ...mapValue,
+                        [key]: nextWrapped.__value__,
+                      };
+                      onChange(setAtPath(rootValue, fullPath, next));
+                    }}
+                  />
                 );
               })
             ) : (

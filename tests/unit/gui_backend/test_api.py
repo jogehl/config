@@ -21,6 +21,7 @@ class _NestedItem(Configclass):
 
     name: str
     size: int
+    meta: _ApiConfigClass
 
 
 class _ContainerClass(Configclass):
@@ -128,6 +129,10 @@ class ApiTest(TestCase):
 
         assert len(items_field["item_children"]) > 0
         assert len(mapping_field["value_children"]) > 0
+        meta_field = next(
+            field for field in items_field["item_children"] if field["name"] == "meta"
+        )
+        assert len(meta_field["children"]) > 0
 
     def test_validate_config(self):
         """Test config validation endpoint."""
