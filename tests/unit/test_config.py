@@ -190,7 +190,7 @@ class TestConfig(TestCase):
         self.assertEqual(fun.__code__, n.func1.__code__)
 
     def test_callable_json_schema_representation(self):
-        """Test Callable fields are represented as string in JSON schema."""
+        """Test Callable fields are represented as object refs in schema."""
 
         class NSchema(Configclass):
             func1: Callable
@@ -198,15 +198,19 @@ class TestConfig(TestCase):
             mapping: dict[str, Callable]
 
         schema = NSchema.model_json_schema()
-        self.assertEqual(schema["properties"]["func1"]["type"], "string")
+        self.assertEqual(schema["properties"]["func1"]["type"], "object")
+        self.assertEqual(
+            schema["properties"]["func1"]["properties"]["type"]["const"],
+            "callable",
+        )
         self.assertEqual(schema["properties"]["funcs"]["type"], "array")
         self.assertEqual(
-            schema["properties"]["funcs"]["items"]["type"], "string"
+            schema["properties"]["funcs"]["items"]["type"], "object"
         )
         self.assertEqual(schema["properties"]["mapping"]["type"], "object")
         self.assertEqual(
             schema["properties"]["mapping"]["additionalProperties"]["type"],
-            "string",
+            "object",
         )
 
     def test_list_of_callables(self):

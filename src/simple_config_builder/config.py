@@ -223,31 +223,31 @@ class Configclass(BaseModel):
             origin = get_origin(annotation)
             args = get_args(annotation)
 
+            callable_ref_schema = {
+                "type": "object",
+                "title": key,
+                "description": (
+                    "Callable reference object used by config serialization."
+                ),
+                "properties": {
+                    "type": {"type": "string", "const": "callable"},
+                    "module": {"type": "string"},
+                    "name": {"type": "string"},
+                    "file_path": {"type": "string"},
+                },
+                "required": ["type", "module", "name"],
+                "additionalProperties": False,
+            }
+
             if _is_callable_annotation(annotation):
                 prop_schema.clear()
-                prop_schema.update(
-                    {
-                        "type": "string",
-                        "title": key,
-                        "description": (
-                            "Callable reference, e.g. "
-                            "'module_name.function_name'."
-                        ),
-                        "examples": ["module_name.function_name"],
-                    }
-                )
+                prop_schema.update(callable_ref_schema)
             elif origin is list and args and _is_callable_annotation(args[0]):
                 prop_schema.clear()
                 prop_schema.update(
                     {
                         "type": "array",
-                        "items": {
-                            "type": "string",
-                            "description": (
-                                "Callable reference, e.g. "
-                                "'module_name.function_name'."
-                            ),
-                        },
+                        "items": callable_ref_schema,
                     }
                 )
             elif origin is dict and len(args) == 2 and _is_callable_annotation(
@@ -257,13 +257,7 @@ class Configclass(BaseModel):
                 prop_schema.update(
                     {
                         "type": "object",
-                        "additionalProperties": {
-                            "type": "string",
-                            "description": (
-                                "Callable reference, e.g. "
-                                "'module_name.function_name'."
-                            ),
-                        },
+                        "additionalProperties": callable_ref_schema,
                     }
                 )
 
