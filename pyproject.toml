@@ -25,7 +25,8 @@ dependencies = [
   "toml",
   "pyaml",
   "pydantic",
-  "fastapi[all]",
+  "flask",
+  "flask-cors",
 ]
 
 [project.optional-dependencies]

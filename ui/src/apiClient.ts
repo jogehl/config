@@ -33,63 +33,91 @@ export interface LoadConfigResponse {
   metadata: ConfigMetadataResponse;
 }
 
+export interface BrowseEntry {
+  name: string;
+  type: "file" | "directory";
+}
+
+export interface BrowseResponse {
+  path: string;
+  parent: string | null;
+  entries: BrowseEntry[];
+}
+
 export class ConfigBuilderApiClient {
   constructor(private readonly baseUrl = "http://localhost:8000/api/v1") {}
 
+  private async request<T>(url: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(url, init);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const detail =
+        (body as { detail?: string }).detail ?? response.statusText;
+      throw new Error(detail);
+    }
+    return response.json() as Promise<T>;
+  }
+
   async getFormats(): Promise<ConfigFormat[]> {
-    const response = await fetch(`${this.baseUrl}/formats`);
-    const body = await response.json();
+    const body = await this.request<{ formats: ConfigFormat[] }>(
+      `${this.baseUrl}/formats`,
+    );
     return body.formats;
   }
 
   async getClasses(): Promise<string[]> {
-    const response = await fetch(`${this.baseUrl}/get-config-classes`);
-    const body = await response.json();
+    const body = await this.request<{ classes: string[] }>(
+      `${this.baseUrl}/get-config-classes`,
+    );
     return body.classes;
   }
 
   async getClassSchema(className: string): Promise<ClassSchemaResponse> {
-    const response = await fetch(
-      `${this.baseUrl}/get-config-class/${encodeURIComponent(className)}`
+    return this.request<ClassSchemaResponse>(
+      `${this.baseUrl}/get-config-class/${encodeURIComponent(className)}`,
     );
-    return response.json();
   }
 
   async loadConfig(payload: LoadConfigRequest): Promise<LoadConfigResponse> {
-    const response = await fetch(`${this.baseUrl}/load-config`, {
+    return this.request<LoadConfigResponse>(`${this.baseUrl}/load-config`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    return response.json();
   }
 
   async configMetadata(
-    payload: ConfigMetadataRequest
+    payload: ConfigMetadataRequest,
   ): Promise<ConfigMetadataResponse> {
-    const response = await fetch(`${this.baseUrl}/config-metadata`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    return response.json();
+    return this.request<ConfigMetadataResponse>(
+      `${this.baseUrl}/config-metadata`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
   }
 
   async validateConfig(payload: ValidateConfigRequest): Promise<unknown> {
-    const response = await fetch(`${this.baseUrl}/validate-config`, {
+    return this.request(`${this.baseUrl}/validate-config`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    return response.json();
+  }
+
+  async browse(directory = "."): Promise<BrowseResponse> {
+    return this.request<BrowseResponse>(
+      `${this.baseUrl}/browse?directory=${encodeURIComponent(directory)}`,
+    );
   }
 
   async saveConfig(payload: SaveConfigRequest): Promise<unknown> {
-    const response = await fetch(`${this.baseUrl}/save-config`, {
+    return this.request(`${this.baseUrl}/save-config`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    return response.json();
   }
 }

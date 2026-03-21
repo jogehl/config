@@ -63,6 +63,18 @@ def import_modules_from_directory(directory: str):
                 if "Configclass" in content:
                     # Dynamically import the module
                     try:
+                        # Use a path-based name to avoid shadowing stdlib or
+                        # already-loaded modules with the same bare filename.
+                        if (
+                            module_name in sys.stdlib_module_names
+                            or module_name in sys.modules
+                        ):
+                            rel_path = os.path.relpath(module_path, directory)
+                            module_name = (
+                                rel_path[:-3]
+                                .replace(os.sep, ".")
+                                .replace("/", ".")
+                            )
                         spec = importlib.util.spec_from_file_location(
                             module_name, module_path
                         )

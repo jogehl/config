@@ -9,8 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.2.2",
+    "@xyflow/react": "^12.10.1",
+    "elkjs": "^0.11.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
     "@types/react": "^18.3.8",
