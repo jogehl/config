@@ -12,12 +12,15 @@ import {
   BackgroundVariant,
   BaseEdge,
   type EdgeProps,
-  getSmoothStepPath,
-  MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import ELK from "elkjs/lib/elk.bundled.js";
-import type { JsonValue, NormalizedField } from "../types";
+import type {
+  ClassSchemaResponse,
+  JsonValue,
+  NormalizedField,
+  ValidationIssue,
+} from "../types";
 
 /* ── Props ──────────────────────────────────────────────────────── */
 
@@ -29,6 +32,20 @@ type Props = {
   selectedClass: string;
   onClassChange: (cls: string) => void;
   isEmpty: boolean;
+  classSchemas: Record<string, ClassSchemaResponse>;
+  validationIssues: ValidationIssue[];
+  onInstantiateField: (path: string[], className: string) => void;
+  onArrayAdd: (
+    path: string[],
+    children: NormalizedField[],
+    className?: string,
+  ) => void;
+  onDictAdd: (
+    path: string[],
+    key: string,
+    children: NormalizedField[],
+    className?: string,
+  ) => void;
 };
 
 /* ── Value helpers ──────────────────────────────────────────────── */
@@ -64,13 +81,91 @@ function setAtPath(obj: Record<string, JsonValue>, path: string[], value: JsonVa
   return copy;
 }
 
+function classNameLabel(className: string): string {
+  return className.split(".").pop() ?? className;
+}
+
+function getConfigClassType(value: JsonValue | undefined): string | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const classType = (value as Record<string, JsonValue>)._config_class_type;
+    return typeof classType === "string" ? classType : null;
+  }
+  return null;
+}
+
+function hasIssueAtOrBelow(issues: ValidationIssue[], path: string[]): boolean {
+  return issues.some((issue) =>
+    path.every((part, index) => issue.path[index] === part),
+  );
+}
+
+function issuesAtPath(issues: ValidationIssue[], path: string[]): ValidationIssue[] {
+  return issues.filter(
+    (issue) =>
+      issue.path.length === path.length
+      && issue.path.every((part, index) => part === path[index]),
+  );
+}
+
+function hasDirectFieldIssues(
+  issues: ValidationIssue[],
+  path: string[],
+): boolean {
+  return issues.some(
+    (issue) =>
+      issue.path.length === path.length + 1
+      && path.every((part, index) => issue.path[index] === part),
+  );
+}
+
+function ErrorBadge({ message }: { message: string }) {
+  return (
+    <span className="scb-tooltip">
+      <span
+        className="inline-flex items-center justify-center shrink-0 rounded-full text-[9px] font-bold text-danger"
+        style={{
+          width: 14,
+          height: 14,
+          background: "color-mix(in srgb, var(--color-danger) 10%, white)",
+          border: "1px solid color-mix(in srgb, var(--color-danger) 28%, transparent)",
+        }}
+        aria-label={message}
+      >
+        !
+      </span>
+      <span className="scb-tooltip-bubble">{message}</span>
+    </span>
+  );
+}
+
+function isCallableSchema(
+  value: unknown,
+): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") return false;
+  const properties = (value as Record<string, unknown>).properties;
+  if (!properties || typeof properties !== "object") return false;
+  const typeField = (properties as Record<string, unknown>).type;
+  if (!typeField || typeof typeField !== "object") return false;
+  return (typeField as Record<string, unknown>).const === "callable";
+}
+
 function formatTypeLabel(field: NormalizedField): string {
+  if (isCallableSchema(field.raw)) return "Callable";
+  const rawSchema = field.raw as Record<string, unknown>;
+  if (field.type === "array" && isCallableSchema(rawSchema.items)) {
+    return "Callable[]";
+  }
+  if (
+    field.type === "object"
+    && isCallableSchema(rawSchema.additionalProperties)
+  ) {
+    return "dict<Callable>";
+  }
+  if (isNestedClass(field)) return configClassLabel(field);
+  if (isClassArray(field)) return `${configClassLabel(field)}[]`;
+  if (isClassDict(field)) return `dict<${configClassLabel(field)}>`;
   if (field.type === "array") return "array";
   if (field.type === "object" && field.raw && typeof field.raw === "object" && "additionalProperties" in field.raw) return "dict";
-  if (field.type === "object" && isNestedClass(field)) {
-    const title = field.raw?.title;
-    if (typeof title === "string" && title) return title;
-  }
   return field.type ?? "unknown";
 }
 
@@ -91,35 +186,68 @@ function isComplex(f: NormalizedField): boolean {
   return isNestedClass(f) || isClassArray(f) || isClassDict(f);
 }
 
-function defaultValueForField(field: NormalizedField): JsonValue {
-  if (field.type === "array") return [];
-  if (field.type === "object") return {};
-  if (field.type === "number" || field.type === "integer") return 0;
-  if (field.type === "boolean") return false;
-  return "";
-}
-
-function defaultObjectFromChildren(children: NormalizedField[]): Record<string, JsonValue> {
-  const r: Record<string, JsonValue> = {};
-  for (const c of children) r[c.name] = defaultValueForField(c);
-  return r;
-}
-
 /* ── Layout constants ───────────────────────────────────────────── */
 
-const NODE_WIDTH = 380;
+const NODE_WIDTH = 408;
 const HEADER_H = 42;
-const ROW_H = 32;
+const ROW_H = 34;
 const PAD_BOTTOM = 8;
-const LABEL_W = 110;
+const LABEL_W = 118;
 
-function nodeHeight(fieldCount: number, collapsed: boolean): number {
-  if (collapsed) return HEADER_H;
-  return HEADER_H + fieldCount * ROW_H + PAD_BOTTOM;
+type CollapsedChildItem = {
+  id: string;
+  label: string;
+  index?: number;
+  key?: string;
+  hasError?: boolean;
+};
+
+type CollapsedChildGroup = {
+  type: "array" | "dict" | "object";
+  items: CollapsedChildItem[];
+  field: NormalizedField;
+};
+
+function collapsedChildHeight(group?: CollapsedChildGroup): number {
+  if (!group || group.items.length === 0) return 0;
+  const pillsPerRow = 3;
+  const rows = Math.ceil(group.items.length / pillsPerRow);
+  return 8 + rows * 24;
 }
 
-function rowCenter(i: number): number {
-  return HEADER_H + i * ROW_H + ROW_H / 2;
+function fieldHeight(field: NormalizedField, group?: CollapsedChildGroup): number {
+  if (!isComplex(field)) return ROW_H;
+  return ROW_H + collapsedChildHeight(group);
+}
+
+function nodeHeight(
+  fields: NormalizedField[],
+  collapsed: boolean,
+  collapsedChildren: Record<string, CollapsedChildGroup>,
+): number {
+  if (collapsed) return HEADER_H;
+  return (
+    HEADER_H
+    + fields.reduce(
+      (total, field) => total + fieldHeight(field, collapsedChildren[field.name]),
+      0,
+    )
+    + PAD_BOTTOM
+  );
+}
+
+function rowCenter(
+  fields: NormalizedField[],
+  index: number,
+  collapsedChildren: Record<string, CollapsedChildGroup>,
+): number {
+  const top = HEADER_H + fields
+    .slice(0, index)
+    .reduce(
+      (total, field) => total + fieldHeight(field, collapsedChildren[field.name]),
+      0,
+    );
+  return top + ROW_H / 2;
 }
 
 /* ── ELK layout with ports ──────────────────────────────────────── */
@@ -128,15 +256,104 @@ const elk = new ELK();
 
 type ElkPort = { id: string; x: number; y: number; width: number; height: number };
 
-async function layoutGraph(nodes: Node[], edges: Edge[]): Promise<Node[]> {
+type RoutedPoint = { x: number; y: number };
+
+function distance(a: RoutedPoint, b: RoutedPoint): number {
+  return Math.hypot(b.x - a.x, b.y - a.y);
+}
+
+function moveToward(from: RoutedPoint, to: RoutedPoint, amount: number): RoutedPoint {
+  const total = distance(from, to);
+  if (total === 0) return from;
+  const ratio = Math.min(amount / total, 1);
+  return {
+    x: from.x + (to.x - from.x) * ratio,
+    y: from.y + (to.y - from.y) * ratio,
+  };
+}
+
+function edgePathFromPoints(points: RoutedPoint[]): string {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+  const radius = 14;
+  let path = `M ${points[0].x} ${points[0].y}`;
+
+  for (let index = 1; index < points.length - 1; index++) {
+    const prev = points[index - 1];
+    const current = points[index];
+    const next = points[index + 1];
+
+    const incoming = Math.min(radius, distance(prev, current) / 2);
+    const outgoing = Math.min(radius, distance(current, next) / 2);
+
+    const curveStart = moveToward(current, prev, incoming);
+    const curveEnd = moveToward(current, next, outgoing);
+    const controlIn = moveToward(curveStart, current, incoming * 0.6);
+    const controlOut = moveToward(curveEnd, current, outgoing * 0.6);
+
+    path += ` L ${curveStart.x} ${curveStart.y}`;
+    path += ` C ${controlIn.x} ${controlIn.y} ${controlOut.x} ${controlOut.y} ${curveEnd.x} ${curveEnd.y}`;
+  }
+
+  const last = points[points.length - 1];
+  path += ` L ${last.x} ${last.y}`;
+  return path;
+}
+
+function edgeMidpointFromPoints(
+  points: RoutedPoint[],
+  fallback: RoutedPoint,
+): RoutedPoint {
+  if (points.length < 2) return fallback;
+
+  const segments = points.slice(1).map((point, index) => {
+    const start = points[index];
+    const dx = point.x - start.x;
+    const dy = point.y - start.y;
+    return {
+      start,
+      end: point,
+      length: Math.hypot(dx, dy),
+    };
+  });
+
+  const totalLength = segments.reduce((sum, segment) => sum + segment.length, 0);
+  if (totalLength === 0) return fallback;
+
+  const targetLength = totalLength / 2;
+  let traversed = 0;
+
+  for (const segment of segments) {
+    if (traversed + segment.length >= targetLength) {
+      const ratio = (targetLength - traversed) / segment.length;
+      return {
+        x: segment.start.x + (segment.end.x - segment.start.x) * ratio,
+        y: segment.start.y + (segment.end.y - segment.start.y) * ratio,
+      };
+    }
+    traversed += segment.length;
+  }
+
+  return fallback;
+}
+
+async function layoutGraph(
+  nodes: Node[],
+  edges: Edge[],
+): Promise<{ nodes: Node[]; edges: Edge[] }> {
   const elkGraph = {
     id: "root",
     layoutOptions: {
       "elk.algorithm": "layered",
       "elk.direction": "RIGHT",
-      "elk.spacing.nodeNode": "40",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "90",
-      "elk.layered.spacing.edgeNodeBetweenLayers": "40",
+      "elk.edgeRouting": "ORTHOGONAL",
+      "elk.spacing.nodeNode": "56",
+      "elk.spacing.edgeEdge": "20",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "120",
+      "elk.layered.spacing.edgeNodeBetweenLayers": "56",
+      "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+      "elk.layered.thoroughness": "12",
       "elk.padding": "[top=20,left=20,bottom=20,right=20]",
       "elk.layered.considerModelOrder": "true",
       "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
@@ -155,20 +372,39 @@ async function layoutGraph(nodes: Node[], edges: Edge[]): Promise<Node[]> {
         y: p.y,
         width: p.width,
         height: p.height,
-        properties: { "elk.port.side": "EAST" },
+        properties: {
+          "elk.port.side": p.x <= 0 ? "WEST" : "EAST",
+        },
       })),
     })),
     edges: edges.map((e) => ({
       id: e.id,
       sources: [e.data?.elkSourcePort as string ?? e.source],
-      targets: [e.target],
+      targets: [e.data?.elkTargetPort as string ?? e.target],
     })),
   };
   const layout = await elk.layout(elkGraph);
-  return nodes.map((node) => {
+  const laidOutNodes = nodes.map((node) => {
     const elkNode = layout.children?.find((n) => n.id === node.id);
     return { ...node, position: { x: elkNode?.x ?? 0, y: elkNode?.y ?? 0 } };
   });
+  const laidOutEdges = edges.map((edge) => {
+    const elkEdge = (layout.edges as Array<{ id: string; sections?: Array<{ startPoint?: RoutedPoint; bendPoints?: RoutedPoint[]; endPoint?: RoutedPoint }> }> | undefined)
+      ?.find((candidate) => candidate.id === edge.id);
+    const section = elkEdge?.sections?.[0];
+    const points: RoutedPoint[] = [];
+    if (section?.startPoint) points.push(section.startPoint);
+    if (section?.bendPoints?.length) points.push(...section.bendPoints);
+    if (section?.endPoint) points.push(section.endPoint);
+    return {
+      ...edge,
+      data: {
+        ...edge.data,
+        elkPoints: points,
+      },
+    };
+  });
+  return { nodes: laidOutNodes, edges: laidOutEdges };
 }
 
 /* ── Node data type ─────────────────────────────────────────────── */
@@ -180,9 +416,19 @@ type ClassNodeData = {
   basePath: string[];
   rootValue: Record<string, JsonValue>;
   onFieldChange: (path: string[], value: JsonValue) => void;
-  onArrayAdd: (path: string[], children: NormalizedField[]) => void;
+  onInstantiateField: (path: string[], className: string) => void;
+  onArrayAdd: (
+    path: string[],
+    children: NormalizedField[],
+    className?: string,
+  ) => void;
   onArrayDelete: (path: string[], index: number) => void;
-  onDictAdd: (path: string[], key: string, children: NormalizedField[]) => void;
+  onDictAdd: (
+    path: string[],
+    key: string,
+    children: NormalizedField[],
+    className?: string,
+  ) => void;
   onDictDelete: (path: string[], key: string) => void;
   onCollapseChildren: (ids: string[]) => void;
   onExpandChild: (id: string) => void;
@@ -192,13 +438,38 @@ type ClassNodeData = {
   nodeHeight: number;
   elkPorts: ElkPort[];
   itemDelete?: () => void;
-  collapsedChildren: Record<string, { type: 'array' | 'dict' | 'object'; items: { id: string; label: string; index?: number; key?: string }[]; field: NormalizedField }>;
+  collapsedChildren: Record<string, CollapsedChildGroup>;
+  validationIssues: ValidationIssue[];
   [key: string]: unknown;
 };
 
 /** Human-friendly label from a field name (e.g. "sub_key" -> "Sub Key"). */
 function friendlyName(name: string): string {
   return name.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function configClassLabel(field: NormalizedField): string {
+  if (isClassArray(field)) {
+    const itemTitle = field.raw?.items;
+    if (itemTitle && typeof itemTitle === "object" && "title" in itemTitle) {
+      const title = itemTitle.title;
+      if (typeof title === "string" && title) return title;
+    }
+  }
+  if (isClassDict(field)) {
+    const valueSchema = field.raw?.additionalProperties;
+    if (
+      valueSchema
+      && typeof valueSchema === "object"
+      && "title" in valueSchema
+    ) {
+      const title = valueSchema.title;
+      if (typeof title === "string" && title) return title;
+    }
+  }
+  const title = field.raw?.title;
+  if (typeof title === "string" && title) return title;
+  return field.title || friendlyName(field.name);
 }
 
 /* ── Inline array editor (tags) ──────────────────────────────────── */
@@ -316,15 +587,17 @@ function InlineDictEditor({ value, onChange }: { value: Record<string, JsonValue
 /* ── Inline primitive editor ────────────────────────────────────── */
 
 function PrimitiveRow({
-  field, path, rootValue, onFieldChange,
+  field, path, rootValue, onFieldChange, validationIssues,
 }: {
   field: NormalizedField;
   path: string[];
   rootValue: Record<string, JsonValue>;
   onFieldChange: (path: string[], value: JsonValue) => void;
+  validationIssues: ValidationIssue[];
 }) {
   const fieldPath = [...path, field.name];
   const current = getAtPath(rootValue, fieldPath);
+  const fieldIssues = issuesAtPath(validationIssues, fieldPath);
   const asString =
     typeof current === "string" ? current : current === undefined ? "" : JSON.stringify(current);
 
@@ -348,25 +621,28 @@ function PrimitiveRow({
     <div className={isPrimitiveContainer ? 'px-3 py-1.5' : 'flex items-center gap-1.5 px-3'} style={isPrimitiveContainer ? undefined : { height: ROW_H }}>
       <div className={isPrimitiveContainer ? 'flex items-center gap-1.5 mb-1' : 'contents'}>
         <span
-          className="text-[11px] font-medium text-text shrink-0 truncate"
+          className={`text-[10px] leading-tight font-medium shrink-0 truncate ${fieldIssues.length > 0 ? "text-danger" : "text-text"}`}
           style={{ width: LABEL_W }}
           title={field.title}
         >
           {field.title}
           {field.required && <span className="text-danger ml-0.5">*</span>}
         </span>
-        <span className="text-[9px] font-mono text-primary bg-primary-ghost px-1 rounded shrink-0">
+        <span className="text-[8px] leading-tight font-mono text-primary bg-primary-ghost px-1 rounded shrink-0">
           {formatTypeLabel(field)}
         </span>
+        {fieldIssues.length > 0 && (
+          <ErrorBadge message={fieldIssues[0].message} />
+        )}
       </div>
-      <div className={isPrimitiveContainer ? '' : 'flex-1 min-w-0 overflow-hidden'}>
+      <div className={isPrimitiveContainer ? '' : 'flex-1 min-w-[116px]'}>
         {field.enum && field.enum.length > 0 ? (
-          <select value={String(current ?? "")} onChange={handleChange} className="!text-[11px] !py-0.5 !px-1.5 w-full">
+          <select value={String(current ?? "")} onChange={handleChange} className="!text-[10px] !leading-tight !min-h-[24px] !py-0.5 !px-1.5 w-full">
             <option value="">--</option>
             {field.enum.map((v) => <option key={String(v)} value={String(v)}>{String(v)}</option>)}
           </select>
         ) : field.type === "boolean" ? (
-          <select value={String(current ?? "false")} onChange={handleChange} className="!text-[11px] !py-0.5 !px-1.5 w-full">
+          <select value={String(current ?? "false")} onChange={handleChange} className="!text-[10px] !leading-tight !min-h-[24px] !py-0.5 !px-1.5 w-full">
             <option value="true">true</option>
             <option value="false">false</option>
           </select>
@@ -385,14 +661,14 @@ function PrimitiveRow({
             value={asString}
             onChange={handleChange}
             title={asString}
-            className="!text-[11px] !py-0.5 !px-1.5 font-mono w-full !text-ellipsis"
+            className="!text-[10px] !leading-tight !min-h-[24px] !py-0.5 !px-1.5 font-mono w-full"
           />
         ) : (
           <input
             type={field.type === "number" || field.type === "integer" ? "number" : "text"}
             value={asString}
             onChange={handleChange}
-            className="!text-[11px] !py-0.5 !px-1.5 w-full"
+            className="!text-[10px] !leading-tight !min-h-[24px] !py-0.5 !px-1.5 w-full"
           />
         )}
       </div>
@@ -403,18 +679,60 @@ function PrimitiveRow({
 /* ── Complex field row (nested object / array / dict) ───────────── */
 
 function ComplexRow({
-  field, index, basePath, rootValue, onArrayAdd, onDictAdd,
+  field,
+  index,
+  allFields,
+  basePath,
+  rootValue,
+  onInstantiateField,
+  onArrayAdd,
+  onArrayDelete,
+  onDictAdd,
+  onDictDelete,
+  onExpandChild,
+  collapsedChild,
+  collapsedChildren,
+  validationIssues,
 }: {
   field: NormalizedField;
   index: number;
+  allFields: NormalizedField[];
   basePath: string[];
   rootValue: Record<string, JsonValue>;
-  onArrayAdd: (path: string[], children: NormalizedField[]) => void;
-  onDictAdd: (path: string[], key: string, children: NormalizedField[]) => void;
+  onInstantiateField: (path: string[], className: string) => void;
+  onArrayAdd: (
+    path: string[],
+    children: NormalizedField[],
+    className?: string,
+  ) => void;
+  onArrayDelete: (path: string[], index: number) => void;
+  onDictAdd: (
+    path: string[],
+    key: string,
+    children: NormalizedField[],
+    className?: string,
+  ) => void;
+  onDictDelete: (path: string[], key: string) => void;
+  onExpandChild: (id: string) => void;
+  collapsedChild?: CollapsedChildGroup;
+  collapsedChildren: Record<string, CollapsedChildGroup>;
+  validationIssues: ValidationIssue[];
 }) {
   const [newKey, setNewKey] = useState("");
+  const [selectedSubclass, setSelectedSubclass] = useState(
+    field.subclass_options[0] ?? "",
+  );
+  const [selectedArraySubclass, setSelectedArraySubclass] = useState(
+    field.item_subclass_options[0] ?? "",
+  );
+  const [selectedDictSubclass, setSelectedDictSubclass] = useState(
+    field.value_subclass_options[0] ?? "",
+  );
   const fieldPath = [...basePath, field.name];
   const current = getAtPath(rootValue, fieldPath);
+  const currentClassType = getConfigClassType(current);
+  const fieldIssues = issuesAtPath(validationIssues, fieldPath);
+  const nestedIssues = hasIssueAtOrBelow(validationIssues, fieldPath);
 
   let countLabel = "";
   if (isClassArray(field)) {
@@ -426,60 +744,183 @@ function ComplexRow({
   }
 
   return (
-    <div className="flex items-center gap-1.5 px-3" style={{ height: ROW_H }}>
+    <div className="px-3 py-0.5">
       {/* Source handle — top is relative to the node root (no position:relative here) */}
       <Handle
         type="source"
         position={Position.Right}
         id={`field-${field.name}`}
         className="!bg-primary !w-2.5 !h-2.5 !border-primary/50 !border-2"
-        style={{ top: rowCenter(index) }}
+        style={{
+          top: rowCenter(
+            allFields,
+            index,
+            collapsedChildren,
+          ),
+        }}
       />
 
-      <span
-        className="text-[11px] font-semibold text-text shrink-0 truncate"
-        style={{ width: LABEL_W }}
-        title={field.name}
-      >
-        {friendlyName(field.name)}
-      </span>
-      <span className="text-[9px] font-mono text-primary bg-primary-ghost px-1 rounded shrink-0">
-        {formatTypeLabel(field)}{countLabel}
-      </span>
-
-      {/* Array: Add button */}
-      {isClassArray(field) && (
-        <button
-          type="button"
-          className="text-[10px] bg-surface-alt text-text border border-border hover:bg-border px-1.5 py-0 rounded ml-auto shrink-0"
-          onClick={(e) => { e.stopPropagation(); onArrayAdd(fieldPath, field.item_children ?? []); }}
+      <div className="flex items-center gap-1.5" style={{ minHeight: ROW_H }}>
+        <span
+          className={`text-[10px] leading-tight font-semibold shrink-0 truncate ${nestedIssues ? "text-danger" : "text-text"}`}
+          style={{ width: LABEL_W }}
+          title={field.name}
         >
-          +
-        </button>
-      )}
+          {friendlyName(field.name)}
+        </span>
+        <span className="text-[8px] leading-tight font-mono text-primary bg-primary-ghost px-1 rounded shrink-0">
+          {(currentClassType ? classNameLabel(currentClassType) : formatTypeLabel(field))}{countLabel}
+        </span>
+        {fieldIssues.length > 0 && (
+          <ErrorBadge message={fieldIssues[0].message} />
+        )}
 
-      {/* Dict: Add key */}
-      {isClassDict(field) && (
-        <div className="flex items-center gap-1 ml-auto shrink-0">
-          <input
-            value={newKey}
-            onChange={(e) => setNewKey(e.target.value)}
-            placeholder="key"
-            className="!text-[10px] !py-0 !px-1 !w-[60px]"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <button
-            type="button"
-            className="text-[10px] bg-surface-alt text-text border border-border hover:bg-border px-1.5 py-0 rounded"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!newKey) return;
-              onDictAdd(fieldPath, newKey, field.value_children ?? []);
-              setNewKey("");
-            }}
-          >
-            +
-          </button>
+        {field.subclass_options.length > 0 && !currentClassType && isNestedClass(field) && (
+          <div className="flex items-center gap-1 ml-auto shrink-0">
+            <select
+              value={selectedSubclass}
+              onChange={(e) => setSelectedSubclass(e.target.value)}
+              className="!text-[10px] !leading-tight !min-h-[24px] !py-0.5 !px-1.5 !w-[132px]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {field.subclass_options.map((option) => (
+                <option key={option} value={option}>
+                  {classNameLabel(option)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="text-[10px] bg-surface-alt text-text border border-border hover:bg-border px-1.5 py-0 rounded"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (selectedSubclass) onInstantiateField(fieldPath, selectedSubclass);
+              }}
+            >
+              Create
+            </button>
+          </div>
+        )}
+
+        {isClassArray(field) && (
+          <div className="flex items-center gap-1 ml-auto shrink-0">
+            {field.item_subclass_options.length > 0 && (
+              <select
+                value={selectedArraySubclass}
+                onChange={(e) => setSelectedArraySubclass(e.target.value)}
+                className="!text-[10px] !leading-tight !min-h-[24px] !py-0.5 !px-1.5 !w-[132px]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {field.item_subclass_options.map((option) => (
+                  <option key={option} value={option}>
+                    {classNameLabel(option)}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              type="button"
+              className="text-[10px] bg-surface-alt text-text border border-border hover:bg-border px-1.5 py-0 rounded shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                onArrayAdd(
+                  fieldPath,
+                  field.item_children ?? [],
+                  selectedArraySubclass || undefined,
+                );
+              }}
+            >
+              +
+            </button>
+          </div>
+        )}
+
+        {isClassDict(field) && (
+          <div className="flex items-center gap-1 ml-auto shrink-0">
+            {field.value_subclass_options.length > 0 && (
+              <select
+                value={selectedDictSubclass}
+                onChange={(e) => setSelectedDictSubclass(e.target.value)}
+                className="!text-[10px] !leading-tight !min-h-[24px] !py-0.5 !px-1.5 !w-[132px]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {field.value_subclass_options.map((option) => (
+                  <option key={option} value={option}>
+                    {classNameLabel(option)}
+                  </option>
+                ))}
+              </select>
+            )}
+            <input
+              value={newKey}
+              onChange={(e) => setNewKey(e.target.value)}
+              placeholder="key"
+              className="!text-[10px] !leading-tight !min-h-[24px] !py-0.5 !px-1.5 !w-[68px]"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              type="button"
+              className="text-[10px] bg-surface-alt text-text border border-border hover:bg-border px-1.5 py-0 rounded"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!newKey) return;
+                onDictAdd(
+                  fieldPath,
+                  newKey,
+                  field.value_children ?? [],
+                  selectedDictSubclass || undefined,
+                );
+                setNewKey("");
+              }}
+            >
+              +
+            </button>
+          </div>
+        )}
+      </div>
+
+      {collapsedChild && collapsedChild.items.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pb-1 pl-[118px]">
+          {collapsedChild.items.map((item) => (
+            <div
+              key={item.id}
+              className="inline-flex items-center gap-1 rounded-full text-[10px] font-medium"
+              style={{
+                background: item.hasError
+                  ? 'color-mix(in srgb, var(--color-danger) 8%, white)'
+                  : 'color-mix(in srgb, var(--color-primary) 7%, white)',
+                border: item.hasError
+                  ? '1px solid color-mix(in srgb, var(--color-danger) 28%, transparent)'
+                  : '1px solid color-mix(in srgb, var(--color-primary) 22%, transparent)',
+                padding: '2px 4px 2px 9px',
+              }}
+            >
+              <span className={`${item.hasError ? "text-danger" : "text-text-muted"} max-w-[90px] truncate`} title={item.label}>{item.label}</span>
+              <button
+                type="button"
+                title="Expand"
+                className="w-4 h-4 rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors text-[9px] font-bold"
+                style={{ border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)' }}
+                onClick={() => onExpandChild(item.id)}
+              >
+                ↗
+              </button>
+              {collapsedChild.type !== 'object' && (
+                <button
+                  type="button"
+                  title="Delete"
+                  className="w-4 h-4 rounded-full flex items-center justify-center text-danger hover:bg-danger hover:text-white transition-colors text-[9px] font-bold"
+                  style={{ border: '1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)' }}
+                  onClick={() => collapsedChild.type === 'array'
+                    ? onArrayDelete(fieldPath, item.index ?? -1)
+                    : onDictDelete(fieldPath, item.key ?? "")
+                  }
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -491,10 +932,10 @@ function ComplexRow({
 function ClassNode({ data }: NodeProps<Node<ClassNodeData>>) {
   const {
     label, badge, allFields, basePath, rootValue, onFieldChange,
-    onArrayAdd, onArrayDelete, onDictAdd, onDictDelete, onCollapseChildren, onExpandChild,
-    collapsed, onToggle, itemDelete, collapsedChildren,
+    onInstantiateField, onArrayAdd, onArrayDelete, onDictAdd, onDictDelete, onCollapseChildren, onExpandChild,
+    collapsed, onToggle, itemDelete, collapsedChildren, validationIssues,
   } = data;
-  const [newKeys, setNewKeys] = useState<Record<string, string>>({});
+  const nodeHasIssues = hasDirectFieldIssues(validationIssues, basePath);
 
   return (
     <div style={{ width: NODE_WIDTH }}>
@@ -503,17 +944,21 @@ function ClassNode({ data }: NodeProps<Node<ClassNodeData>>) {
         type="target"
         position={Position.Left}
         className="!bg-primary !w-3 !h-3 !border-2 !border-white"
-        style={{ boxShadow: '0 0 0 1.5px var(--color-primary)' }}
+        style={{
+          top: "50%",
+          transform: "translateY(-50%)",
+          boxShadow: '0 0 0 1.5px var(--color-primary)',
+        }}
       />
 
       <div
         className="bg-surface rounded-lg shadow-md overflow-visible"
         style={{
           border: collapsed
-            ? '2px solid var(--color-primary)'
-            : '1.5px solid color-mix(in srgb, var(--color-primary) 28%, transparent)',
+            ? `2px solid ${nodeHasIssues ? 'var(--color-danger)' : 'var(--color-primary)'}`
+            : `1.5px solid color-mix(in srgb, ${nodeHasIssues ? 'var(--color-danger)' : 'var(--color-primary)'} 28%, transparent)`,
           boxShadow: collapsed
-            ? '0 0 0 3px color-mix(in srgb, var(--color-primary) 10%, transparent), 0 2px 8px rgba(0,0,0,0.07)'
+            ? `0 0 0 3px color-mix(in srgb, ${nodeHasIssues ? 'var(--color-danger)' : 'var(--color-primary)'} 10%, transparent), 0 2px 8px rgba(0,0,0,0.07)`
             : '0 2px 8px rgba(0,0,0,0.06)',
         }}
       >
@@ -523,20 +968,20 @@ function ClassNode({ data }: NodeProps<Node<ClassNodeData>>) {
           style={{
             height: HEADER_H,
             background: collapsed
-              ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)'
-              : 'color-mix(in srgb, var(--color-primary) 5%, transparent)',
-            borderBottom: collapsed ? 'none' : '1px solid color-mix(in srgb, var(--color-primary) 18%, transparent)',
+              ? `color-mix(in srgb, ${nodeHasIssues ? 'var(--color-danger)' : 'var(--color-primary)'} 12%, transparent)`
+              : `color-mix(in srgb, ${nodeHasIssues ? 'var(--color-danger)' : 'var(--color-primary)'} 5%, transparent)`,
+            borderBottom: collapsed ? 'none' : `1px solid color-mix(in srgb, ${nodeHasIssues ? 'var(--color-danger)' : 'var(--color-primary)'} 18%, transparent)`,
             borderRadius: collapsed ? '8px' : '8px 8px 0 0',
           }}
           onClick={onToggle}
         >
           <span
-            className="text-primary transition-transform duration-200 text-[10px]"
+            className={`${nodeHasIssues ? "text-danger" : "text-primary"} transition-transform duration-200 text-[10px]`}
             style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)', display: 'inline-block' }}
           >
             &#9660;
           </span>
-          <span className="font-bold text-[13px] text-text truncate flex-1">{label}</span>
+          <span className={`font-bold text-[13px] truncate flex-1 ${nodeHasIssues ? "text-danger" : "text-text"}`}>{label}</span>
           {collapsed && (
             <span
               className="text-[9px] font-mono text-primary shrink-0"
@@ -574,10 +1019,18 @@ function ClassNode({ data }: NodeProps<Node<ClassNodeData>>) {
               key={field.name}
               field={field}
               index={i}
+              allFields={allFields}
               basePath={basePath}
               rootValue={rootValue}
+              onInstantiateField={onInstantiateField}
               onArrayAdd={onArrayAdd}
+              onArrayDelete={onArrayDelete}
               onDictAdd={onDictAdd}
+              onDictDelete={onDictDelete}
+              onExpandChild={onExpandChild}
+              collapsedChild={collapsedChildren[field.name]}
+              collapsedChildren={collapsedChildren}
+              validationIssues={validationIssues}
             />
           ) : (
             <PrimitiveRow
@@ -586,111 +1039,10 @@ function ClassNode({ data }: NodeProps<Node<ClassNodeData>>) {
               path={basePath}
               rootValue={rootValue}
               onFieldChange={onFieldChange}
+              validationIssues={validationIssues}
             />
           ),
         )}
-
-        {/* Collapsed children */}
-        {!collapsed && Object.entries(collapsedChildren).map(([fieldName, { type, items, field }]) => {
-          const fieldPath = [...basePath, fieldName];
-          return (
-            <div key={fieldName} className="px-3 pt-2 pb-2.5 border-t border-border/60">
-              {/* Section header */}
-              <div className="flex items-center gap-1.5 mb-2">
-                <span className="text-[9px] font-mono font-semibold text-primary uppercase tracking-wide">{fieldName}</span>
-                <span
-                  className="text-[8px] font-mono rounded px-1 py-px"
-                  style={{
-                    background: 'color-mix(in srgb, var(--color-primary) 8%, transparent)',
-                    border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
-                    color: 'var(--color-primary)',
-                  }}
-                >
-                  {type}
-                </span>
-                {/* Add button (only for array/dict) */}
-                {type === 'array' ? (
-                  <button
-                    type="button"
-                    className="ml-auto text-[10px] font-bold text-primary hover:text-primary-hover px-2 py-0.5 rounded transition-colors"
-                    style={{
-                      background: 'color-mix(in srgb, var(--color-primary) 8%, transparent)',
-                      border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
-                    }}
-                    onClick={() => onArrayAdd(fieldPath, field.item_children ?? [])}
-                  >
-                    + Add
-                  </button>
-                ) : type === 'dict' ? (
-                  <div className="ml-auto flex items-center gap-1">
-                    <input
-                      value={newKeys[fieldName] || ''}
-                      onChange={(e) => setNewKeys(prev => ({ ...prev, [fieldName]: e.target.value }))}
-                      placeholder="key"
-                      className="!text-[10px] !py-0.5 !px-1.5 !w-[72px] !rounded"
-                    />
-                    <button
-                      type="button"
-                      className="text-[10px] font-bold text-primary hover:text-primary-hover px-2 py-0.5 rounded transition-colors"
-                      style={{
-                        background: 'color-mix(in srgb, var(--color-primary) 8%, transparent)',
-                        border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
-                      }}
-                      onClick={() => {
-                        if (!newKeys[fieldName]) return;
-                        onDictAdd(fieldPath, newKeys[fieldName], field.value_children ?? []);
-                        setNewKeys(prev => ({ ...prev, [fieldName]: '' }));
-                      }}
-                    >
-                      + Add
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-              {/* Collapsed items as pills */}
-              <div className="flex flex-wrap gap-1.5">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="inline-flex items-center gap-1 rounded-full text-[10px] font-medium"
-                    style={{
-                      background: 'color-mix(in srgb, var(--color-primary) 7%, white)',
-                      border: '1px solid color-mix(in srgb, var(--color-primary) 22%, transparent)',
-                      padding: '2px 4px 2px 9px',
-                    }}
-                  >
-                    <span className="text-text-muted max-w-[90px] truncate" title={item.label}>{item.label}</span>
-                    {/* Expand */}
-                    <button
-                      type="button"
-                      title="Expand"
-                      className="w-4 h-4 rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors text-[9px] font-bold"
-                      style={{ border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)' }}
-                      onClick={() => onExpandChild(item.id)}
-                    >
-                      ↗
-                    </button>
-                    {/* Delete (not for object sub-classes) */}
-                    {type !== 'object' && (
-                      <button
-                        type="button"
-                        title="Delete"
-                        className="w-4 h-4 rounded-full flex items-center justify-center text-danger hover:bg-danger hover:text-white transition-colors text-[9px] font-bold"
-                        style={{ border: '1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)' }}
-                        onClick={() => type === 'array'
-                          ? onArrayDelete(fieldPath, (item as { index: number }).index)
-                          : onDictDelete(fieldPath, (item as { key: string }).key)
-                        }
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
@@ -701,9 +1053,16 @@ const nodeTypes = { classNode: ClassNode };
 /* ── Minimizable edge component ─────────────────────────────────── */
 
 function MinimizableEdge({ sourceX, sourceY, targetX, targetY, data, style }: EdgeProps) {
-  const [edgePath] = getSmoothStepPath({ sourceX, sourceY, targetX, targetY, borderRadius: 14 });
-  const midX = (sourceX + targetX) / 2;
-  const midY = (sourceY + targetY) / 2;
+  const routedPoints = Array.isArray((data as { elkPoints?: RoutedPoint[] } | undefined)?.elkPoints)
+    ? ((data as { elkPoints?: RoutedPoint[] }).elkPoints ?? [])
+    : [];
+  const edgePath = routedPoints.length > 1
+    ? edgePathFromPoints(routedPoints)
+    : `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
+  const midpoint = edgeMidpointFromPoints(routedPoints, {
+    x: (sourceX + targetX) / 2,
+    y: (sourceY + targetY) / 2,
+  });
   const hasCollapse = data && (data as any).onCollapse;
   const isCollapsed = !!(data as any)?.isCollapsed;
 
@@ -720,7 +1079,7 @@ function MinimizableEdge({ sourceX, sourceY, targetX, targetY, data, style }: Ed
       />
       {hasCollapse && (
         <g
-          transform={`translate(${midX}, ${midY})`}
+          transform={`translate(${midpoint.x}, ${midpoint.y})`}
           style={{ cursor: 'pointer', pointerEvents: 'all' }}
           onClick={() => (data as any).onCollapse()}
         >
@@ -756,12 +1115,24 @@ function buildGraph(
   fields: NormalizedField[],
   rootLabel: string,
   value: Record<string, JsonValue>,
+  classSchemas: Record<string, ClassSchemaResponse>,
+  validationIssues: ValidationIssue[],
   collapsed: Set<string>,
   onToggle: (id: string) => void,
   onFieldChange: (path: string[], value: JsonValue) => void,
-  onArrayAdd: (path: string[], children: NormalizedField[]) => void,
+  onInstantiateField: (path: string[], className: string) => void,
+  onArrayAdd: (
+    path: string[],
+    children: NormalizedField[],
+    className?: string,
+  ) => void,
   onArrayDelete: (path: string[], index: number) => void,
-  onDictAdd: (path: string[], key: string, children: NormalizedField[]) => void,
+  onDictAdd: (
+    path: string[],
+    key: string,
+    children: NormalizedField[],
+    className?: string,
+  ) => void,
   onDictDelete: (path: string[], key: string) => void,
   collapsedItems: Set<string>,
   onCollapseChildren: (ids: string[]) => void,
@@ -769,6 +1140,68 @@ function buildGraph(
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
+
+  function collectCollapsedChildren(
+    allFields: NormalizedField[],
+    basePath: string[],
+  ): Record<string, CollapsedChildGroup> {
+    const groups: Record<string, CollapsedChildGroup> = {};
+
+    for (const field of allFields) {
+      const fieldPath = [...basePath, field.name];
+      const fieldId = fieldPath.join(".");
+
+      if (isNestedClass(field) && collapsedItems.has(fieldId)) {
+        groups[field.name] = {
+          type: "object",
+          items: [{
+            id: fieldId,
+            label: friendlyName(field.name),
+            hasError: hasIssueAtOrBelow(validationIssues, fieldPath),
+          }],
+          field,
+        };
+        continue;
+      }
+
+      if (isClassArray(field)) {
+        const arrValue = getAtPath(value, fieldPath);
+        const arr = Array.isArray(arrValue) ? arrValue : [];
+        const items = arr
+          .map((_, idx) => ({
+            id: `${fieldId}[${idx}]`,
+            label: `${configClassLabel(field)} #${idx}`,
+            index: idx,
+            hasError: hasIssueAtOrBelow(
+              validationIssues,
+              [...fieldPath, String(idx)],
+            ),
+          }))
+          .filter((item) => collapsedItems.has(item.id));
+        if (items.length > 0) groups[field.name] = { type: "array", items, field };
+        continue;
+      }
+
+      if (isClassDict(field)) {
+        const dictValue = getAtPath(value, fieldPath);
+        const dict = dictValue && typeof dictValue === "object" && !Array.isArray(dictValue)
+          ? dictValue as Record<string, JsonValue>
+          : {};
+        const items = Object.keys(dict)
+          .sort()
+          .map((key) => ({
+            id: `${fieldId}.${key}`,
+            label: key,
+            key,
+            hasError: hasIssueAtOrBelow(validationIssues, [...fieldPath, key]),
+          }))
+          .filter((item) => collapsedItems.has(item.id));
+        if (items.length > 0) groups[field.name] = { type: "dict", items, field };
+      }
+    }
+
+    return groups;
+  }
 
   function addClassNode(
     nodeId: string,
@@ -779,17 +1212,25 @@ function buildGraph(
     itemDelete?: () => void,
   ) {
     const isCollapsed = collapsed.has(nodeId);
-    const h = nodeHeight(allFields.length, isCollapsed);
+    const collapsedChildren = collectCollapsedChildren(allFields, basePath);
+    const h = nodeHeight(allFields, isCollapsed, collapsedChildren);
 
     // Build ELK ports for each complex field (source handles)
     const elkPorts: ElkPort[] = [];
+    elkPorts.push({
+      id: `${nodeId}:target`,
+      x: 0,
+      y: h / 2,
+      width: 8,
+      height: 8,
+    });
     if (!isCollapsed) {
       allFields.forEach((f, i) => {
         if (isComplex(f)) {
           elkPorts.push({
             id: `${nodeId}:field-${f.name}`,
             x: NODE_WIDTH,
-            y: rowCenter(i),
+            y: rowCenter(allFields, i, collapsedChildren),
             width: 6,
             height: 6,
           });
@@ -808,19 +1249,21 @@ function buildGraph(
         basePath,
         rootValue: value,
         onFieldChange,
+        onInstantiateField,
         onArrayAdd,
         onArrayDelete,
         onDictAdd,
         onDictDelete,
         onCollapseChildren,
         onExpandChild,
+        validationIssues,
         collapsed: isCollapsed,
         onToggle: () => onToggle(nodeId),
         nodeWidth: NODE_WIDTH,
         nodeHeight: h,
         elkPorts,
         itemDelete,
-        collapsedChildren: {},
+        collapsedChildren,
       },
     });
 
@@ -833,48 +1276,57 @@ function buildGraph(
       const elkPortId = `${nodeId}:${handleId}`;
 
       if (isNestedClass(field)) {
-        const children = field.children ?? [];
-        const classTitle = (typeof field.raw?.title === 'string' && field.raw.title) || field.title;
+        const currentValue = getAtPath(value, fieldPath);
+        const currentClassType = getConfigClassType(currentValue);
+        if (field.subclass_options.length > 0 && !currentClassType) {
+          continue;
+        }
+        const children = currentClassType && classSchemas[currentClassType]
+          ? classSchemas[currentClassType].normalized_schema.fields
+          : (field.children ?? []);
+        const classTitle = currentClassType
+          ? classNameLabel(currentClassType)
+          : configClassLabel(field);
         if (collapsedItems.has(fieldId)) {
-          // Show as pill inside parent
-          const parentNode = nodes.find(n => n.id === nodeId)! as Node<ClassNodeData>;
-          parentNode.data.collapsedChildren[field.name] = {
-            type: 'object',
-            items: [{ id: fieldId, label: friendlyName(field.name) }],
-            field,
-          };
-        } else {
-          addClassNode(fieldId, friendlyName(field.name), classTitle, children, fieldPath);
-          edges.push({
-            id: `edge:${nodeId}->${fieldId}`,
-            source: nodeId,
-            sourceHandle: handleId,
-            target: fieldId,
-            type: "minimizable",
-            style: { stroke: "var(--color-primary)", strokeWidth: 1.5, opacity: 0.6 },
+          continue;
+        }
+        addClassNode(fieldId, friendlyName(field.name), classTitle, children, fieldPath);
+        edges.push({
+          id: `edge:${nodeId}->${fieldId}`,
+          source: nodeId,
+          sourceHandle: handleId,
+          target: fieldId,
+          type: "minimizable",
+          style: { stroke: "var(--color-primary)", strokeWidth: 1.5, opacity: 0.6 },
             data: {
               elkSourcePort: elkPortId,
+              elkTargetPort: `${fieldId}:target`,
               onCollapse: () => onCollapseChildren([fieldId]),
               isCollapsed: false,
             },
-          });
-        }
+        });
       } else if (isClassArray(field)) {
-        const itemChildren = field.item_children ?? [];
         const arrValue = getAtPath(value, fieldPath);
         const arr = Array.isArray(arrValue) ? arrValue : [];
-        const collapsedArrayItems: { id: string; label: string; index: number }[] = [];
 
         // Add items in order (index 0, 1, 2, ...)
         for (let idx = 0; idx < arr.length; idx++) {
           const itemId = `${fieldId}[${idx}]`;
           if (collapsedItems.has(itemId)) {
-            collapsedArrayItems.push({ id: itemId, label: `${field.title} #${idx}`, index: idx });
+            continue;
           } else {
             const itemPath = [...fieldPath, String(idx)];
             const capturedIdx = idx;
+            const currentClassType = getConfigClassType(arr[idx]);
+            const itemChildren = currentClassType && classSchemas[currentClassType]
+              ? classSchemas[currentClassType].normalized_schema.fields
+              : (field.item_children ?? []);
             addClassNode(
-              itemId, `${field.title} #${idx}`, "item", itemChildren, itemPath,
+              itemId,
+              `${currentClassType ? classNameLabel(currentClassType) : configClassLabel(field)} #${idx}`,
+              "item",
+              itemChildren,
+              itemPath,
               () => onArrayDelete(fieldPath, capturedIdx),
             );
             edges.push({
@@ -886,30 +1338,29 @@ function buildGraph(
               style: { stroke: "var(--color-primary)", strokeWidth: 1.5, opacity: 0.55 },
               data: {
                 elkSourcePort: elkPortId,
+                elkTargetPort: `${itemId}:target`,
                 onCollapse: () => onCollapseChildren([itemId]),
                 isCollapsed: false,
               },
             });
           }
         }
-
-        if (collapsedArrayItems.length > 0) {
-          (nodes.find(n => n.id === nodeId)! as Node<ClassNodeData>).data.collapsedChildren[field.name] = { type: 'array', items: collapsedArrayItems, field };
-        }
       } else if (isClassDict(field)) {
-        const valueChildren = field.value_children ?? [];
         const dictValue = getAtPath(value, fieldPath);
         const dict = dictValue && typeof dictValue === "object" && !Array.isArray(dictValue)
           ? dictValue as Record<string, JsonValue> : {};
-        const collapsedDictItems: { id: string; label: string; key: string }[] = [];
 
         for (const key of Object.keys(dict).sort()) {
           const entryId = `${fieldId}.${key}`;
           if (collapsedItems.has(entryId)) {
-            collapsedDictItems.push({ id: entryId, label: key, key });
+            continue;
           } else {
             const entryPath = [...fieldPath, key];
             const capturedKey = key;
+            const currentClassType = getConfigClassType(dict[key]);
+            const valueChildren = currentClassType && classSchemas[currentClassType]
+              ? classSchemas[currentClassType].normalized_schema.fields
+              : (field.value_children ?? []);
             addClassNode(
               entryId, key, "entry", valueChildren, entryPath,
               () => onDictDelete(fieldPath, capturedKey),
@@ -923,15 +1374,12 @@ function buildGraph(
               style: { stroke: "var(--color-primary)", strokeWidth: 1.5, opacity: 0.55 },
               data: {
                 elkSourcePort: elkPortId,
+                elkTargetPort: `${entryId}:target`,
                 onCollapse: () => onCollapseChildren([entryId]),
                 isCollapsed: false,
               },
             });
           }
-        }
-
-        if (collapsedDictItems.length > 0) {
-          (nodes.find(n => n.id === nodeId)! as Node<ClassNodeData>).data.collapsedChildren[field.name] = { type: 'dict', items: collapsedDictItems, field };
         }
       }
     }
@@ -950,7 +1398,20 @@ function buildGraph(
 
 /* ── Main component ─────────────────────────────────────────────── */
 
-export function SchemaForm({ fields, value, onChange, classes, selectedClass, onClassChange, isEmpty }: Props) {
+export function SchemaForm({
+  fields,
+  value,
+  onChange,
+  classes,
+  selectedClass,
+  onClassChange,
+  isEmpty,
+  classSchemas,
+  validationIssues,
+  onInstantiateField,
+  onArrayAdd: onArrayAddProp,
+  onDictAdd: onDictAddProp,
+}: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [collapsedItems, setCollapsedItems] = useState<Set<string>>(new Set());
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
@@ -971,30 +1432,11 @@ export function SchemaForm({ fields, value, onChange, classes, selectedClass, on
     [value, onChange],
   );
 
-  const onArrayAdd = useCallback(
-    (path: string[], itemChildren: NormalizedField[]) => {
-      const current = getAtPath(value, path);
-      const arr = Array.isArray(current) ? current : [];
-      onChange(setAtPath(value, path, [...arr, defaultObjectFromChildren(itemChildren)]));
-    },
-    [value, onChange],
-  );
-
   const onArrayDelete = useCallback(
     (path: string[], index: number) => {
       const current = getAtPath(value, path);
       const arr = Array.isArray(current) ? current : [];
       onChange(setAtPath(value, path, arr.filter((_, i) => i !== index)));
-    },
-    [value, onChange],
-  );
-
-  const onDictAdd = useCallback(
-    (path: string[], key: string, valueChildren: NormalizedField[]) => {
-      const current = getAtPath(value, path);
-      const dict = current && typeof current === "object" && !Array.isArray(current)
-        ? current as Record<string, JsonValue> : {};
-      onChange(setAtPath(value, path, { ...dict, [key]: defaultObjectFromChildren(valueChildren) }));
     },
     [value, onChange],
   );
@@ -1025,8 +1467,25 @@ export function SchemaForm({ fields, value, onChange, classes, selectedClass, on
   const rootLabel = selectedClass ? selectedClass.split(".").pop() ?? "Config" : "Config";
 
   const { nodes: rawNodes, edges: rawEdges } = useMemo(
-    () => buildGraph(fields, rootLabel, value, collapsed, onToggle, onFieldChange, onArrayAdd, onArrayDelete, onDictAdd, onDictDelete, collapsedItems, onCollapseChildren, onExpandChild),
-    [fields, rootLabel, value, collapsed, onToggle, onFieldChange, onArrayAdd, onArrayDelete, onDictAdd, onDictDelete, collapsedItems, onCollapseChildren, onExpandChild],
+    () => buildGraph(
+      fields,
+      rootLabel,
+      value,
+      classSchemas,
+      validationIssues,
+      collapsed,
+      onToggle,
+      onFieldChange,
+      onInstantiateField,
+      onArrayAddProp,
+      onArrayDelete,
+      onDictAddProp,
+      onDictDelete,
+      collapsedItems,
+      onCollapseChildren,
+      onExpandChild,
+    ),
+    [fields, rootLabel, value, classSchemas, validationIssues, collapsed, onToggle, onFieldChange, onInstantiateField, onArrayAddProp, onArrayDelete, onDictAddProp, onDictDelete, collapsedItems, onCollapseChildren, onExpandChild],
   );
 
   const structureKey = useMemo(
@@ -1048,8 +1507,8 @@ export function SchemaForm({ fields, value, onChange, classes, selectedClass, on
       prevStructure.current = structureKey;
       setLayoutDone(false);
       layoutGraph(rawNodes, rawEdges).then((laid) => {
-        setFlowNodes(laid);
-        setFlowEdges(rawEdges);
+        setFlowNodes(laid.nodes);
+        setFlowEdges(laid.edges);
         setLayoutDone(true);
       });
     } else {

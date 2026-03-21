@@ -1,4 +1,4 @@
-import type { ClassSchemaResponse, JsonValue } from "./types";
+import type { ClassSchemaResponse, JsonValue, ValidationIssue } from "./types";
 
 export type ConfigFormat = "json" | "yaml" | "toml";
 
@@ -42,6 +42,13 @@ export interface BrowseResponse {
   path: string;
   parent: string | null;
   entries: BrowseEntry[];
+}
+
+export interface ValidateConfigResponse {
+  valid: boolean;
+  normalized?: JsonValue;
+  detail?: string;
+  errors?: ValidationIssue[];
 }
 
 export class ConfigBuilderApiClient {
@@ -99,12 +106,21 @@ export class ConfigBuilderApiClient {
     );
   }
 
-  async validateConfig(payload: ValidateConfigRequest): Promise<unknown> {
-    return this.request(`${this.baseUrl}/validate-config`, {
+  async validateConfig(payload: ValidateConfigRequest): Promise<ValidateConfigResponse> {
+    const response = await fetch(`${this.baseUrl}/validate-config`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return {
+        valid: false,
+        detail: (body as { detail?: string }).detail ?? response.statusText,
+        errors: (body as { errors?: ValidationIssue[] }).errors ?? [],
+      };
+    }
+    return body as ValidateConfigResponse;
   }
 
   async browse(directory = "."): Promise<BrowseResponse> {

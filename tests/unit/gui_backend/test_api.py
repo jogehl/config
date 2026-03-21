@@ -31,6 +31,12 @@ class _ContainerClass(Configclass):
     mapping: dict[str, _NestedItem]
 
 
+class _DirectNestedContainer(Configclass):
+    """Container config class for direct nested object schema checks."""
+
+    database: _NestedItem
+
+
 class ApiTest(TestCase):
     """Test the API routes."""
 
@@ -131,6 +137,28 @@ class ApiTest(TestCase):
         assert len(mapping_field["value_children"]) > 0
         meta_field = next(
             field for field in items_field["item_children"] if field["name"] == "meta"
+        )
+        assert len(meta_field["children"]) > 0
+
+    def test_normalized_schema_contains_direct_nested_children(self):
+        """Direct nested Configclass should include child metadata."""
+        class_name = (
+            f"{_DirectNestedContainer.__module__}."
+            f"{_DirectNestedContainer.__name__}"
+        )
+        response = self.client.get(f"/api/v1/get-config-class/{class_name}")
+        assert response.status_code == 200
+        fields = response.json()["normalized_schema"]["fields"]
+
+        database_field = next(
+            field for field in fields if field["name"] == "database"
+        )
+        assert database_field["type"] == "object"
+        assert len(database_field["children"]) > 0
+        meta_field = next(
+            field
+            for field in database_field["children"]
+            if field["name"] == "meta"
         )
         assert len(meta_field["children"]) > 0
 

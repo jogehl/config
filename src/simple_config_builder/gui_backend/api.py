@@ -9,10 +9,11 @@ from typing import Any
 
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
+from pydantic import ValidationError
 
 from simple_config_builder.__about__ import __version__
 from simple_config_builder.config import ConfigClassRegistry
-from simple_config_builder.config_io import to_dict, write_config
+from simple_config_builder.config_io import construct_config, to_dict, write_config
 from simple_config_builder.config_types import ConfigTypes
 from simple_config_builder.configparser import Configparser
 from simple_config_builder.gui_backend.schema import normalize_json_schema
@@ -42,6 +43,73 @@ CONFIG_EXTENSIONS = {".json", ".yaml", ".yml", ".toml"}
 def _error(status: int, detail: str):
     """Return a JSON error response matching the FastAPI format."""
     return jsonify({"detail": detail}), status
+
+
+def _validation_error(detail: str, errors: list[dict[str, Any]]):
+    """Return a structured validation error response."""
+    return jsonify({"detail": detail, "errors": errors}), 422
+
+
+def _normalize_validation_errors(
+    error: ValidationError,
+    prefix: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Convert pydantic errors into UI-friendly path/message entries."""
+    normalized: list[dict[str, Any]] = []
+    path_prefix = prefix or []
+    for item in error.errors():
+        loc = [
+            str(part)
+            for part in item.get("loc", ())
+            if part != "__root__"
+        ]
+        normalized.append(
+            {
+                "path": [*path_prefix, *loc],
+                "message": item.get("msg", "Validation error"),
+            }
+        )
+    return normalized
+
+
+def _validate_tagged_subconfigs(
+    value: Any,
+    path: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Validate nested _config_class_type objects and keep full paths."""
+    current_path = path or []
+    errors: list[dict[str, Any]] = []
+
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            errors.extend(
+                _validate_tagged_subconfigs(item, [*current_path, str(index)])
+            )
+        return errors
+
+    if not isinstance(value, dict):
+        return errors
+
+    for key, nested_value in value.items():
+        if key == "_config_class_type":
+            continue
+        errors.extend(
+            _validate_tagged_subconfigs(nested_value, [*current_path, key])
+        )
+
+    class_name = value.get("_config_class_type")
+    if not isinstance(class_name, str):
+        return errors
+
+    try:
+        config_class = ConfigClassRegistry.get(class_name)
+        config_class.model_validate(value)
+    except ValidationError as exc:
+        errors.extend(_normalize_validation_errors(exc, current_path))
+    except (ValueError, ImportError) as exc:
+        errors.append({"path": current_path, "message": str(exc)})
+
+    return errors
 
 
 def _file_digest(path: Path) -> str:
@@ -167,11 +235,19 @@ def validate_config():
 
     try:
         config_class = ConfigClassRegistry.get(class_name)
-        validated = config_class.model_validate(data)
-    except ValueError as exc:
-        return _error(422, str(exc))
+        tagged_errors = _validate_tagged_subconfigs(data)
+        if tagged_errors:
+            return _validation_error(tagged_errors[0]["message"], tagged_errors)
+        hydrated_data = construct_config(data)
+        validated = config_class.model_validate(hydrated_data)
+    except ValidationError as exc:
+        errors = _normalize_validation_errors(exc)
+        detail = errors[0]["message"] if errors else str(exc)
+        return _validation_error(detail, errors)
+    except (ValueError, ImportError) as exc:
+        return _validation_error(str(exc), [{"path": [], "message": str(exc)}])
     except Exception as exc:
-        return _error(422, str(exc))
+        return _validation_error(str(exc), [{"path": [], "message": str(exc)}])
 
     return jsonify({"valid": True, "normalized": validated.model_dump()})
 

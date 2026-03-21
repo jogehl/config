@@ -6,18 +6,30 @@ import {
 } from "./apiClient";
 import { FileBrowser } from "./components/FileBrowser";
 import { SchemaForm } from "./components/SchemaForm";
-import type { ClassSchemaResponse, JsonValue, NormalizedField } from "./types";
+import type {
+  ClassSchemaResponse,
+  JsonValue,
+  NormalizedField,
+  ValidationIssue,
+} from "./types";
 
 const api = new ConfigBuilderApiClient();
 
 /** Build a default config object from normalized schema fields. */
-function defaultsFromFields(fields: NormalizedField[]): Record<string, JsonValue> {
-  const result: Record<string, JsonValue> = {};
+function defaultsFromFields(
+  fields: NormalizedField[],
+  className?: string,
+): Record<string, JsonValue> {
+  const result: Record<string, JsonValue> = className
+    ? { _config_class_type: className }
+    : {};
   for (const f of fields) {
     if (f.default !== undefined && f.default !== null) {
       result[f.name] = f.default;
+    } else if (f.subclass_options.length > 0) {
+      result[f.name] = {};
     } else if (f.type === "object" && f.children.length > 0) {
-      result[f.name] = defaultsFromFields(f.children);
+      result[f.name] = defaultsFromFields(f.children, f.config_class);
     } else if (f.type === "array") {
       result[f.name] = [];
     } else if (f.type === "object") {
@@ -31,6 +43,26 @@ function defaultsFromFields(fields: NormalizedField[]): Record<string, JsonValue
     }
   }
   return result;
+}
+
+function collectConfigClassTypes(
+  value: JsonValue,
+  found = new Set<string>(),
+): Set<string> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const obj = value as Record<string, JsonValue>;
+    if (typeof obj._config_class_type === "string") {
+      found.add(obj._config_class_type);
+    }
+    for (const nested of Object.values(obj)) {
+      collectConfigClassTypes(nested, found);
+    }
+  } else if (Array.isArray(value)) {
+    for (const item of value) {
+      collectConfigClassTypes(item, found);
+    }
+  }
+  return found;
 }
 
 /** Find the first _config_class_type in a (possibly nested) config object.
@@ -77,9 +109,15 @@ function getNestedValue(obj: Record<string, JsonValue>, path: string[]): Record<
 function setNestedValue(
   obj: Record<string, JsonValue>,
   path: string[],
-  value: Record<string, JsonValue>,
+  value: JsonValue,
 ): Record<string, JsonValue> {
-  if (path.length === 0) return value;
+  if (path.length === 0) {
+    return (
+      value && typeof value === "object" && !Array.isArray(value)
+    )
+      ? value as Record<string, JsonValue>
+      : {};
+  }
   const copy: Record<string, JsonValue> = JSON.parse(JSON.stringify(obj));
   let cur: Record<string, JsonValue> = copy;
   for (let i = 0; i < path.length - 1; i++) {
@@ -121,18 +159,28 @@ export function App() {
   const [classes, setClasses] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [schema, setSchema] = useState<ClassSchemaResponse | null>(null);
+  const [classSchemas, setClassSchemas] = useState<Record<string, ClassSchemaResponse>>({});
   const [configDraft, setConfigDraft] = useState<JsonValue>({});
+  const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [status, setStatus] = useState("Idle");
   const [loadedMetadata, setLoadedMetadata] = useState<ConfigMetadataResponse | null>(null);
   const [remoteMetadata, setRemoteMetadata] = useState<ConfigMetadataResponse | null>(null);
   const [showFileBrowser, setShowFileBrowser] = useState(false);
   const [classDataPath, setClassDataPath] = useState<string[]>([]);
 
+  const ensureClassSchema = useCallback(async (className: string) => {
+    if (classSchemas[className]) return classSchemas[className];
+    const result = await api.getClassSchema(className);
+    setClassSchemas((prev) => ({ ...prev, [className]: result }));
+    return result;
+  }, [classSchemas]);
+
   const loadConfigFromPath = useCallback(async (path: string) => {
     setStatus("Loading config...");
     try {
       const result = await api.loadConfig({ config_path: path });
       setConfigDraft(result.config);
+      setValidationIssues([]);
       setLoadedMetadata(result.metadata);
       // Auto-detect config class from _config_class_type (search recursively)
       const entry = findConfigClassEntry(result.config);
@@ -147,6 +195,7 @@ export function App() {
     } catch {
       // New file — start with empty draft
       setConfigDraft({});
+      setValidationIssues([]);
       setLoadedMetadata(null);
       setStatus("New file (will be created on save)");
     }
@@ -166,6 +215,15 @@ export function App() {
     return false;
   }, [configDraft]);
 
+  const applyDraftChange = useCallback((next: Record<string, JsonValue>) => {
+    setValidationIssues([]);
+    if (classDataPath.length > 0) {
+      setConfigDraft(setNestedValue(objectDraft, classDataPath, next));
+    } else {
+      setConfigDraft(next);
+    }
+  }, [classDataPath, objectDraft]);
+
   // Debounced auto-validation
   const validateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -178,14 +236,15 @@ export function App() {
 
     if (validateTimer.current) clearTimeout(validateTimer.current);
     validateTimer.current = setTimeout(async () => {
-      try {
-        await api.validateConfig({
-          class_name: selectedClass,
-          data: validationData,
-        });
+      const result = await api.validateConfig({
+        class_name: selectedClass,
+        data: validationData,
+      });
+      setValidationIssues(result.errors ?? []);
+      if (result.valid) {
         setStatus("Validation passed");
-      } catch (error: unknown) {
-        setStatus(`Validation failed: ${String(error)}`);
+      } else {
+        setStatus(`Validation failed: ${result.detail ?? "Unknown error"}`);
       }
     }, 600);
 
@@ -205,21 +264,96 @@ export function App() {
 
   useEffect(() => {
     if (!selectedClass) return;
-    api.getClassSchema(selectedClass)
+    ensureClassSchema(selectedClass)
       .then((result) => setSchema(result))
       .catch((error: unknown) => setStatus(`Schema load failed: ${String(error)}`));
-  }, [selectedClass]);
+  }, [selectedClass, ensureClassSchema]);
+
+  useEffect(() => {
+    const classNames = Array.from(collectConfigClassTypes(configDraft));
+    if (selectedClass) classNames.push(selectedClass);
+    for (const className of classNames) {
+      if (!classSchemas[className]) {
+        void ensureClassSchema(className);
+      }
+    }
+  }, [configDraft, selectedClass, classSchemas, ensureClassSchema]);
 
   // When a class is picked on an empty file, populate with defaults from the schema
   useEffect(() => {
     if (!isEmpty || !schema?.normalized_schema.fields.length) return;
-    const defaults = defaultsFromFields(schema.normalized_schema.fields);
+    const defaults = defaultsFromFields(
+      schema.normalized_schema.fields,
+      selectedClass || undefined,
+    );
     if (Object.keys(defaults).length > 0) {
       setConfigDraft(defaults);
+      setValidationIssues([]);
       setClassDataPath([]);
       setStatus("Default config created from schema");
     }
-  }, [schema, isEmpty]);
+  }, [schema, isEmpty, selectedClass]);
+
+  const buildDefaultsForClass = useCallback(async (className: string) => {
+    const classSchema = await ensureClassSchema(className);
+    return defaultsFromFields(
+      classSchema.normalized_schema.fields,
+      className,
+    );
+  }, [ensureClassSchema]);
+
+  const instantiateField = useCallback(async (path: string[], className: string) => {
+    const defaults = await buildDefaultsForClass(className);
+    const activeDraft = classDataPath.length > 0
+      ? getNestedValue(objectDraft, classDataPath)
+      : objectDraft;
+    applyDraftChange(setNestedValue(activeDraft, path, defaults));
+  }, [applyDraftChange, buildDefaultsForClass, classDataPath, objectDraft]);
+
+  const addArrayItem = useCallback(async (
+    path: string[],
+    itemChildren: NormalizedField[],
+    className?: string,
+  ) => {
+    const activeDraft = classDataPath.length > 0
+      ? getNestedValue(objectDraft, classDataPath)
+      : objectDraft;
+    const arrValue = path.reduce<JsonValue | undefined>((cur, key) => {
+      if (cur && typeof cur === "object" && !Array.isArray(cur)) {
+        return (cur as Record<string, JsonValue>)[key];
+      }
+      return undefined;
+    }, activeDraft);
+    const arr = Array.isArray(arrValue) ? arrValue : [];
+    const nextItem = className
+      ? await buildDefaultsForClass(className)
+      : defaultsFromFields(itemChildren);
+    applyDraftChange(setNestedValue(activeDraft, path, [...arr, nextItem]));
+  }, [applyDraftChange, buildDefaultsForClass, classDataPath, objectDraft]);
+
+  const addDictItem = useCallback(async (
+    path: string[],
+    key: string,
+    valueChildren: NormalizedField[],
+    className?: string,
+  ) => {
+    const activeDraft = classDataPath.length > 0
+      ? getNestedValue(objectDraft, classDataPath)
+      : objectDraft;
+    const dictValue = path.reduce<JsonValue | undefined>((cur, part) => {
+      if (cur && typeof cur === "object" && !Array.isArray(cur)) {
+        return (cur as Record<string, JsonValue>)[part];
+      }
+      return undefined;
+    }, activeDraft);
+    const dict = dictValue && typeof dictValue === "object" && !Array.isArray(dictValue)
+      ? dictValue as Record<string, JsonValue>
+      : {};
+    const nextValue = className
+      ? await buildDefaultsForClass(className)
+      : defaultsFromFields(valueChildren);
+    applyDraftChange(setNestedValue(activeDraft, path, { ...dict, [key]: nextValue }));
+  }, [applyDraftChange, buildDefaultsForClass, classDataPath, objectDraft]);
 
   useEffect(() => {
     const poll = setInterval(async () => {
@@ -335,17 +469,16 @@ export function App() {
           <SchemaForm
             fields={schema?.normalized_schema.fields ?? []}
             value={classDataPath.length > 0 ? getNestedValue(objectDraft, classDataPath) : objectDraft}
-            onChange={(next) => {
-              if (classDataPath.length > 0) {
-                setConfigDraft(setNestedValue(objectDraft, classDataPath, next));
-              } else {
-                setConfigDraft(next);
-              }
-            }}
+            onChange={applyDraftChange}
             classes={classes}
             selectedClass={selectedClass}
             onClassChange={setSelectedClass}
             isEmpty={isEmpty}
+            classSchemas={classSchemas}
+            validationIssues={validationIssues}
+            onInstantiateField={instantiateField}
+            onArrayAdd={addArrayItem}
+            onDictAdd={addDictItem}
           />
         </section>
       </main>

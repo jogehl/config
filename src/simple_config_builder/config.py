@@ -244,6 +244,34 @@ class Configclass(BaseModel):
             origin = get_origin(annotation)
             args = get_args(annotation)
 
+            def _is_configclass_annotation(value: Any) -> bool:
+                return isinstance(value, type) and issubclass(
+                    value, Configclass
+                )
+
+            def _strip_schema_metadata(
+                nested_schema: dict[str, Any],
+            ) -> dict[str, Any]:
+                return {
+                    nested_key: nested_value
+                    for nested_key, nested_value in nested_schema.items()
+                    if nested_key != "$defs"
+                }
+
+            def _configclass_schema_metadata(
+                config_class: type[Configclass],
+            ) -> dict[str, Any]:
+                class_name = ConfigClassRegistry.get_class_str_from_class(
+                    config_class
+                )
+                return {
+                    "x-config-class": class_name,
+                    "x-config-subclasses": ConfigClassRegistry.list_subclasses(
+                        config_class,
+                        recursive=True,
+                    ),
+                }
+
             callable_ref_schema = {
                 "type": "object",
                 "title": key,
@@ -281,6 +309,48 @@ class Configclass(BaseModel):
                         "additionalProperties": callable_ref_schema,
                     }
                 )
+            elif _is_configclass_annotation(annotation):
+                prop_schema.clear()
+                prop_schema.update(
+                    _strip_schema_metadata(annotation.model_json_schema())
+                )
+                prop_schema.update(_configclass_schema_metadata(annotation))
+            elif (
+                origin is list
+                and args
+                and _is_configclass_annotation(args[0])
+            ):
+                prop_schema.clear()
+                prop_schema.update(
+                    {
+                        "type": "array",
+                        "items": _strip_schema_metadata(
+                            args[0].model_json_schema()
+                        ),
+                    }
+                )
+                if isinstance(prop_schema.get("items"), dict):
+                    prop_schema["items"].update(
+                        _configclass_schema_metadata(args[0])
+                    )
+            elif (
+                origin is dict
+                and len(args) == 2
+                and _is_configclass_annotation(args[1])
+            ):
+                prop_schema.clear()
+                prop_schema.update(
+                    {
+                        "type": "object",
+                        "additionalProperties": _strip_schema_metadata(
+                            args[1].model_json_schema()
+                        ),
+                    }
+                )
+                if isinstance(prop_schema.get("additionalProperties"), dict):
+                    prop_schema["additionalProperties"].update(
+                        _configclass_schema_metadata(args[1])
+                    )
             elif not prop_schema:
                 if annotation in (str,):
                     prop_schema.update({"type": "string"})
@@ -422,6 +492,37 @@ class ConfigClassRegistry:
             for key, value in config_class.model_fields.items()
         }
         return fields
+
+    @classmethod
+    def list_subclasses(
+        cls,
+        base_class: str | type[Configclass],
+        *,
+        include_base: bool = False,
+        recursive: bool = False,
+    ) -> list[str]:
+        """List registered subclasses for a given Configclass."""
+        if isinstance(base_class, str):
+            base_type = cls.get(base_class)
+        else:
+            base_type = base_class
+
+        matches: list[str] = []
+        for class_name, registered_class in cls.__registry.items():
+            if not isinstance(registered_class, type):
+                continue
+            if registered_class is base_type:
+                if include_base:
+                    matches.append(class_name)
+                continue
+            if not issubclass(registered_class, base_type):
+                continue
+            if recursive:
+                matches.append(class_name)
+                continue
+            if registered_class.__base__ is base_type:
+                matches.append(class_name)
+        return matches
 
 
 __all__ = [

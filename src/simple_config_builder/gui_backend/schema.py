@@ -49,6 +49,12 @@ def _normalize_field(
         "children": [],
         "item_children": [],
         "value_children": [],
+        "config_class": resolved_schema.get("x-config-class"),
+        "subclass_options": resolved_schema.get("x-config-subclasses", []),
+        "item_config_class": None,
+        "item_subclass_options": [],
+        "value_config_class": None,
+        "value_subclass_options": [],
     }
 
     if field_type == "object":
@@ -66,6 +72,12 @@ def _normalize_field(
                 resolved = _resolve_ref(root_schema, value_schema["$ref"])
                 if resolved:
                     value_schema = resolved
+            normalized["value_config_class"] = value_schema.get(
+                "x-config-class"
+            )
+            normalized["value_subclass_options"] = value_schema.get(
+                "x-config-subclasses", []
+            )
             if isinstance(value_schema.get("properties"), dict):
                 value_required = set(value_schema.get("required", []))
                 normalized["value_children"] = [
@@ -88,6 +100,12 @@ def _normalize_field(
                 resolved = _resolve_ref(root_schema, item_schema["$ref"])
                 if resolved:
                     item_schema = resolved
+            normalized["item_config_class"] = item_schema.get(
+                "x-config-class"
+            )
+            normalized["item_subclass_options"] = item_schema.get(
+                "x-config-subclasses", []
+            )
             if isinstance(item_schema.get("properties"), dict):
                 item_required = set(item_schema.get("required", []))
                 normalized["item_children"] = [

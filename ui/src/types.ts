@@ -19,6 +19,17 @@ export type NormalizedField = {
   children: NormalizedField[];
   item_children: NormalizedField[];
   value_children: NormalizedField[];
+  config_class?: string;
+  subclass_options: string[];
+  item_config_class?: string | null;
+  item_subclass_options: string[];
+  value_config_class?: string | null;
+  value_subclass_options: string[];
+};
+
+export type ValidationIssue = {
+  path: string[];
+  message: string;
 };
 
 export type ClassSchemaResponse = {
