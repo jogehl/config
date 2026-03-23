@@ -28,6 +28,8 @@ function defaultsFromFields(
       result[f.name] = f.default;
     } else if (f.subclass_options.length > 0) {
       result[f.name] = {};
+    } else if (f.config_class) {
+      result[f.name] = defaultsFromFields(f.children, f.config_class);
     } else if (f.type === "object" && f.children.length > 0) {
       result[f.name] = defaultsFromFields(f.children, f.config_class);
     } else if (f.type === "array") {

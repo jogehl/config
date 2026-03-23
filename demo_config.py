@@ -51,3 +51,4 @@ class ServerConfig(Configclass):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     health_check: Callable = print
+    some_class: Configclass

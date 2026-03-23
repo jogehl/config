@@ -170,16 +170,37 @@ function formatTypeLabel(field: NormalizedField): string {
 }
 
 function isNestedClass(f: NormalizedField): boolean {
-  return f.type === "object" && Array.isArray(f.children) && f.children.length > 0;
+  return (
+    f.type === "object"
+    && (
+      !!f.config_class
+      || (Array.isArray(f.subclass_options) && f.subclass_options.length > 0)
+      || (Array.isArray(f.children) && f.children.length > 0)
+    )
+  );
 }
 
 function isClassArray(f: NormalizedField): boolean {
-  return f.type === "array" && Array.isArray(f.item_children) && f.item_children.length > 0;
+  return (
+    f.type === "array"
+    && (
+      !!f.item_config_class
+      || (Array.isArray(f.item_subclass_options) && f.item_subclass_options.length > 0)
+      || (Array.isArray(f.item_children) && f.item_children.length > 0)
+    )
+  );
 }
 
 function isClassDict(f: NormalizedField): boolean {
-  return f.type === "object" && Array.isArray(f.value_children) && f.value_children.length > 0 &&
-    !!(f.raw && typeof f.raw === "object" && "additionalProperties" in f.raw);
+  return (
+    f.type === "object"
+    && !!(f.raw && typeof f.raw === "object" && "additionalProperties" in f.raw)
+    && (
+      !!f.value_config_class
+      || (Array.isArray(f.value_subclass_options) && f.value_subclass_options.length > 0)
+      || (Array.isArray(f.value_children) && f.value_children.length > 0)
+    )
+  );
 }
 
 function isComplex(f: NormalizedField): boolean {
@@ -449,6 +470,9 @@ function friendlyName(name: string): string {
 }
 
 function configClassLabel(field: NormalizedField): string {
+  if (field.config_class) return classNameLabel(field.config_class);
+  if (field.item_config_class) return classNameLabel(field.item_config_class);
+  if (field.value_config_class) return classNameLabel(field.value_config_class);
   if (isClassArray(field)) {
     const itemTitle = field.raw?.items;
     if (itemTitle && typeof itemTitle === "object" && "title" in itemTitle) {
