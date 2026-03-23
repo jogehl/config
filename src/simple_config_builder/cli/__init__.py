@@ -1,5 +1,7 @@
 """Module contains the main entry point for the config CLI."""
 
+import os
+
 import click
 
 from simple_config_builder.__about__ import __version__
@@ -38,22 +40,20 @@ def config():
 )
 def start(host, port, directory):
     """Start the config CLI."""
+    resolved_dir = os.path.abspath(directory)
+    os.environ["SCB_CONFIG_DIR"] = resolved_dir
+
     click.echo(
         "Registering all configclasses in current directory and subfolders..."
     )
-    # Register all configclasses in the current directory and subfolders
-    # iterate over all files in the current directory and subfolders
-    # and import them to register the configclasses
-    click.echo("Starting the config CLI-GUI...")
-    import_modules_from_directory(directory)
+    import_modules_from_directory(resolved_dir)
 
+    click.echo("Starting the config CLI-GUI...")
     click.echo(
         f"These are the registered configclasses: "
         f"{ConfigClassRegistry.list_classes()}"
     )
 
-    # Start the GUI backend server here
-    import uvicorn
     from simple_config_builder.gui_backend.api import app
 
-    uvicorn.run(app, host=host, port=port)
+    app.run(host=host, port=port, debug=True)

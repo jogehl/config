@@ -32,6 +32,7 @@ import importlib.util
 
 from pydantic import (
     BaseModel,
+    PydanticInvalidForJsonSchema,
     PrivateAttr,
     SerializerFunctionWrapHandler,
     model_serializer,
@@ -43,7 +44,10 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Type,
+    get_args,
+    get_origin,
 )
+from collections.abc import Callable as CollectionsCallable
 
 if TYPE_CHECKING:
     from typing import ClassVar
@@ -200,20 +204,171 @@ class Configclass(BaseModel):
     @classmethod
     def __get_pydantic_json_schema__(cls, core_schema, handler):
         """Get the JSON schema for the Configclass."""
-        # Check for Callable fields and convert them to a string representation
-        for key, field_info in cls.model_fields.items():
-            print(core_schema)
-            if field_info.annotation == "Callable":
-                # Convert Callable to a string representation
-                core_schema = core_schema.copy()
-                print(core_schema)
-                core_schema["type"] = "string"
-                core_schema["description"] = (
-                    "A callable function, represented as a string."
-                )
-                core_schema["example"] = "module_name.function_name"
+        try:
+            schema = super().__get_pydantic_json_schema__(core_schema, handler)
+        except PydanticInvalidForJsonSchema:
+            schema = {
+                "title": cls.__name__,
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
+        properties = schema.get("properties", {})
 
-        return super().__get_pydantic_json_schema__(core_schema, handler)
+        def _is_callable_annotation(annotation: Any) -> bool:
+            origin = get_origin(annotation)
+            if annotation in (CollectionsCallable, "Callable"):
+                return True
+            if origin is CollectionsCallable:
+                return True
+            if origin in (tuple, list, set):
+                args = get_args(annotation)
+                return bool(args and _is_callable_annotation(args[0]))
+            if origin is dict:
+                args = get_args(annotation)
+                return bool(len(args) == 2 and _is_callable_annotation(args[1]))
+            if str(origin).endswith("UnionType") or str(origin).endswith(
+                "Union"
+            ):
+                return any(
+                    _is_callable_annotation(arg)
+                    for arg in get_args(annotation)
+                    if arg is not type(None)
+                )
+            return False
+
+        for key, field_info in cls.model_fields.items():
+            prop_schema = properties.setdefault(key, {})
+
+            annotation = field_info.annotation
+            origin = get_origin(annotation)
+            args = get_args(annotation)
+
+            def _is_configclass_annotation(value: Any) -> bool:
+                return isinstance(value, type) and issubclass(
+                    value, Configclass
+                )
+
+            def _strip_schema_metadata(
+                nested_schema: dict[str, Any],
+            ) -> dict[str, Any]:
+                return {
+                    nested_key: nested_value
+                    for nested_key, nested_value in nested_schema.items()
+                    if nested_key != "$defs"
+                }
+
+            def _configclass_schema_metadata(
+                config_class: type[Configclass],
+            ) -> dict[str, Any]:
+                class_name = ConfigClassRegistry.get_class_str_from_class(
+                    config_class
+                )
+                return {
+                    "x-config-class": class_name,
+                    "x-config-subclasses": ConfigClassRegistry.list_subclasses(
+                        config_class,
+                        recursive=True,
+                    ),
+                }
+
+            callable_ref_schema = {
+                "type": "object",
+                "title": key,
+                "description": (
+                    "Callable reference object used by config serialization."
+                ),
+                "properties": {
+                    "type": {"type": "string", "const": "callable"},
+                    "module": {"type": "string"},
+                    "name": {"type": "string"},
+                    "file_path": {"type": "string"},
+                },
+                "required": ["type", "module", "name"],
+                "additionalProperties": False,
+            }
+
+            if _is_callable_annotation(annotation):
+                prop_schema.clear()
+                prop_schema.update(callable_ref_schema)
+            elif origin is list and args and _is_callable_annotation(args[0]):
+                prop_schema.clear()
+                prop_schema.update(
+                    {
+                        "type": "array",
+                        "items": callable_ref_schema,
+                    }
+                )
+            elif origin is dict and len(args) == 2 and _is_callable_annotation(
+                args[1]
+            ):
+                prop_schema.clear()
+                prop_schema.update(
+                    {
+                        "type": "object",
+                        "additionalProperties": callable_ref_schema,
+                    }
+                )
+            elif _is_configclass_annotation(annotation):
+                prop_schema.clear()
+                prop_schema.update(
+                    _strip_schema_metadata(annotation.model_json_schema())
+                )
+                prop_schema.update(_configclass_schema_metadata(annotation))
+            elif (
+                origin is list
+                and args
+                and _is_configclass_annotation(args[0])
+            ):
+                prop_schema.clear()
+                prop_schema.update(
+                    {
+                        "type": "array",
+                        "items": _strip_schema_metadata(
+                            args[0].model_json_schema()
+                        ),
+                    }
+                )
+                if isinstance(prop_schema.get("items"), dict):
+                    prop_schema["items"].update(
+                        _configclass_schema_metadata(args[0])
+                    )
+            elif (
+                origin is dict
+                and len(args) == 2
+                and _is_configclass_annotation(args[1])
+            ):
+                prop_schema.clear()
+                prop_schema.update(
+                    {
+                        "type": "object",
+                        "additionalProperties": _strip_schema_metadata(
+                            args[1].model_json_schema()
+                        ),
+                    }
+                )
+                if isinstance(prop_schema.get("additionalProperties"), dict):
+                    prop_schema["additionalProperties"].update(
+                        _configclass_schema_metadata(args[1])
+                    )
+            elif not prop_schema:
+                if annotation in (str,):
+                    prop_schema.update({"type": "string"})
+                elif annotation in (int,):
+                    prop_schema.update({"type": "integer"})
+                elif annotation in (float,):
+                    prop_schema.update({"type": "number"})
+                elif annotation in (bool,):
+                    prop_schema.update({"type": "boolean"})
+                elif origin is list:
+                    prop_schema.update({"type": "array"})
+                elif origin is dict:
+                    prop_schema.update({"type": "object"})
+
+            if field_info.is_required() and key not in schema["required"]:
+                schema["required"].append(key)
+
+        return schema
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -337,6 +492,37 @@ class ConfigClassRegistry:
             for key, value in config_class.model_fields.items()
         }
         return fields
+
+    @classmethod
+    def list_subclasses(
+        cls,
+        base_class: str | type[Configclass],
+        *,
+        include_base: bool = False,
+        recursive: bool = False,
+    ) -> list[str]:
+        """List registered subclasses for a given Configclass."""
+        if isinstance(base_class, str):
+            base_type = cls.get(base_class)
+        else:
+            base_type = base_class
+
+        matches: list[str] = []
+        for class_name, registered_class in cls.__registry.items():
+            if not isinstance(registered_class, type):
+                continue
+            if registered_class is base_type:
+                if include_base:
+                    matches.append(class_name)
+                continue
+            if not issubclass(registered_class, base_type):
+                continue
+            if recursive:
+                matches.append(class_name)
+                continue
+            if registered_class.__base__ is base_type:
+                matches.append(class_name)
+        return matches
 
 
 __all__ = [

@@ -1,101 +1,313 @@
 """API routes for the GUI backend."""
 
-import uuid
-from fastapi import APIRouter, Request
-from fastapi import FastAPI
-from fastapi import Response
-from fastapi.responses import FileResponse
+from __future__ import annotations
+
+import hashlib
+import os
+from pathlib import Path
+from typing import Any
+
+from flask import Flask, jsonify, request, send_file
+from flask_cors import CORS
+from pydantic import ValidationError
 
 from simple_config_builder.__about__ import __version__
 from simple_config_builder.config import ConfigClassRegistry
+from simple_config_builder.config_io import construct_config, to_dict, write_config
+from simple_config_builder.config_types import ConfigTypes
 from simple_config_builder.configparser import Configparser
-from simple_config_builder.gui_backend.session_data import SessionData
+from simple_config_builder.gui_backend.schema import normalize_json_schema
 
-app = FastAPI()
-api_router_v1 = APIRouter(prefix="/api/v1")
+app = Flask(__name__)
 
-session_data = SessionData()
+_modules_registered = False
 
 
-@app.middleware("http")
-async def check_for_session_data(request, call_next):
-    """Middleware to check for session data."""
-    # get the cookied session key
-    session_key = request.cookies.get("session_key")
-    # log the session_key to the console
-    if session_key is not None:
-        request.state.session_key = session_key
-        session_data[session_key] = {}
-    else:
-        # redirect to /session if no session key is found
-        if request.url.path != "/api/v1/session":
-            return Response(
-                status_code=302, headers={"Location": "/api/v1/session"}
+@app.before_request
+def _ensure_modules_registered():
+    """Re-register configclasses after a Flask debug reload."""
+    global _modules_registered  # noqa: PLW0603
+    if _modules_registered:
+        return
+    _modules_registered = True
+    config_dir = os.environ.get("SCB_CONFIG_DIR")
+    if config_dir and not ConfigClassRegistry.list_classes():
+        from simple_config_builder.utils import import_modules_from_directory
+
+        import_modules_from_directory(config_dir)
+CORS(app)
+
+CONFIG_EXTENSIONS = {".json", ".yaml", ".yml", ".toml"}
+
+
+def _error(status: int, detail: str):
+    """Return a JSON error response matching the FastAPI format."""
+    return jsonify({"detail": detail}), status
+
+
+def _validation_error(detail: str, errors: list[dict[str, Any]]):
+    """Return a structured validation error response."""
+    return jsonify({"detail": detail, "errors": errors}), 422
+
+
+def _normalize_validation_errors(
+    error: ValidationError,
+    prefix: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Convert pydantic errors into UI-friendly path/message entries."""
+    normalized: list[dict[str, Any]] = []
+    path_prefix = prefix or []
+    for item in error.errors():
+        loc = [
+            str(part)
+            for part in item.get("loc", ())
+            if part != "__root__"
+        ]
+        normalized.append(
+            {
+                "path": [*path_prefix, *loc],
+                "message": item.get("msg", "Validation error"),
+            }
+        )
+    return normalized
+
+
+def _validate_tagged_subconfigs(
+    value: Any,
+    path: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Validate nested _config_class_type objects and keep full paths."""
+    current_path = path or []
+    errors: list[dict[str, Any]] = []
+
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            errors.extend(
+                _validate_tagged_subconfigs(item, [*current_path, str(index)])
             )
-    response = await call_next(request)
-    return response
+        return errors
 
+    if not isinstance(value, dict):
+        return errors
 
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
-    """Return the favicon."""
-    return FileResponse("src/simple_config_builder/gui_backend/favicon.ico")
+    for key, nested_value in value.items():
+        if key == "_config_class_type":
+            continue
+        errors.extend(
+            _validate_tagged_subconfigs(nested_value, [*current_path, key])
+        )
 
+    class_name = value.get("_config_class_type")
+    if not isinstance(class_name, str):
+        return errors
 
-# define the API routes here
-@app.get("/")
-async def root():
-    """Root endpoint that returns a welcome message."""
-    return {"message": "Welcome to the GUI backend API!"}
-
-
-@api_router_v1.get("/version")
-async def version():
-    """Retrieve the current version of the application."""
-    return {"version": __version__}
-
-
-@api_router_v1.get("/session")
-async def new_session_data(response: Response):
-    """Create a new session and set a session cookie."""
-    session_key = str(uuid.uuid4())
-    session_data[session_key] = {}
-    response.set_cookie("session_key", session_key)
-    return {"session_key": session_key}
-
-
-# post request which gets the path to the configuration file
-@api_router_v1.post("/load-config")
-async def load_config(config_path: str, request: Request):
-    """Load the configuration from the given path."""
     try:
-        config = Configparser(config_path, autoreload=True)
-    except ValueError as e:
-        return {"error": str(e)}
-    session_data[request.state.session_key]["config"] = config
-    return {"config": config}
+        config_class = ConfigClassRegistry.get(class_name)
+        config_class.model_validate(value)
+    except ValidationError as exc:
+        errors.extend(_normalize_validation_errors(exc, current_path))
+    except (ValueError, ImportError) as exc:
+        errors.append({"path": current_path, "message": str(exc)})
+
+    return errors
 
 
-@api_router_v1.get("/get-config-classes")
-async def get_config_classes(request: Request):
+def _file_digest(path: Path) -> str:
+    """Return SHA256 digest for file contents."""
+    hasher = hashlib.sha256()
+    with path.open("rb") as file_obj:
+        hasher.update(file_obj.read())
+    return hasher.hexdigest()
+
+
+def _file_metadata(path: Path) -> dict[str, Any]:
+    """Return existence, mtime and hash metadata for a file."""
+    exists = path.exists()
+    return {
+        "exists": exists,
+        "mtime_ns": path.stat().st_mtime_ns if exists else None,
+        "sha256": _file_digest(path) if exists else None,
+    }
+
+
+# ── Static ─────────────────────────────────────────────────────────
+
+
+@app.get("/favicon.ico")
+def favicon():
+    """Return the favicon."""
+    ico = Path(__file__).parent / "favicon.ico"
+    if ico.exists():
+        return send_file(ico, mimetype="image/x-icon")
+    return "", 204
+
+
+@app.get("/")
+def root():
+    """Root endpoint that returns a welcome message."""
+    return jsonify({"message": "Welcome to the GUI backend API!"})
+
+
+# ── Info ───────────────────────────────────────────────────────────
+
+
+@app.get("/api/v1/version")
+def version():
+    """Retrieve the current version of the application."""
+    return jsonify({"version": __version__})
+
+
+@app.get("/api/v1/formats")
+def formats():
+    """List supported output/input config formats."""
+    return jsonify({"formats": [fmt.value for fmt in ConfigTypes]})
+
+
+# ── Config IO ──────────────────────────────────────────────────────
+
+
+@app.post("/api/v1/load-config")
+def load_config():
+    """Load the configuration from the given path."""
+    body = request.get_json(silent=True) or {}
+    config_path = body.get("config_path")
+    autoreload = body.get("autoreload", False)
+    if not config_path:
+        return _error(400, "config_path is required")
+
+    try:
+        config = Configparser(config_path, autoreload=autoreload)
+        config_data = config.config_data
+    except ValueError as exc:
+        return _error(400, str(exc))
+    except ImportError as exc:
+        return _error(422, str(exc))
+    except FileNotFoundError as exc:
+        return _error(404, str(exc))
+    except Exception as exc:
+        return _error(500, f"Failed to load config: {exc}")
+
+    path = Path(config_path)
+    return jsonify({"config": to_dict(config_data), "metadata": _file_metadata(path)})
+
+
+@app.post("/api/v1/config-metadata")
+def config_metadata():
+    """Get file metadata for multi-user change detection in UIs."""
+    body = request.get_json(silent=True) or {}
+    config_path = body.get("config_path")
+    if not config_path:
+        return _error(400, "config_path is required")
+    return jsonify(_file_metadata(Path(config_path)))
+
+
+# ── Config classes ─────────────────────────────────────────────────
+
+
+@app.get("/api/v1/get-config-classes")
+def get_config_classes():
     """Retrieve the list of configuration classes."""
-    from simple_config_builder import Configclass
-    from collections.abc import Callable
-
-    class N(Configclass):
-        func1: Callable
-
-    classes = ConfigClassRegistry.list_classes()
-    return {"classes": classes}
+    return jsonify({"classes": ConfigClassRegistry.list_classes()})
 
 
-@api_router_v1.get("/get-config-class/{class_name}")
-async def get_config_class(class_name: str, request: Request):
+@app.get("/api/v1/get-config-class/<path:class_name>")
+def get_config_class(class_name: str):
     """Retrieve a specific configuration class by name."""
-    config_class = ConfigClassRegistry.get(class_name)
+    try:
+        config_class = ConfigClassRegistry.get(class_name)
+    except ValueError as exc:
+        return _error(404, str(exc))
     schema = config_class.model_json_schema()
-    # Store the class in session data
-    return schema
+    return jsonify({
+        "schema": schema,
+        "normalized_schema": normalize_json_schema(schema),
+    })
 
 
-app.include_router(api_router_v1)
+@app.post("/api/v1/validate-config")
+def validate_config():
+    """Validate a JSON payload against the selected config class."""
+    body = request.get_json(silent=True) or {}
+    class_name = body.get("class_name")
+    data = body.get("data")
+    if not class_name or data is None:
+        return _error(400, "class_name and data are required")
+
+    try:
+        config_class = ConfigClassRegistry.get(class_name)
+        tagged_errors = _validate_tagged_subconfigs(data)
+        if tagged_errors:
+            return _validation_error(tagged_errors[0]["message"], tagged_errors)
+        hydrated_data = construct_config(data)
+        validated = config_class.model_validate(hydrated_data)
+    except ValidationError as exc:
+        errors = _normalize_validation_errors(exc)
+        detail = errors[0]["message"] if errors else str(exc)
+        return _validation_error(detail, errors)
+    except (ValueError, ImportError) as exc:
+        return _validation_error(str(exc), [{"path": [], "message": str(exc)}])
+    except Exception as exc:
+        return _validation_error(str(exc), [{"path": [], "message": str(exc)}])
+
+    return jsonify({"valid": True, "normalized": validated.model_dump()})
+
+
+@app.post("/api/v1/save-config")
+def save_config():
+    """Persist a given config payload to disk."""
+    body = request.get_json(silent=True) or {}
+    config_path = body.get("config_path")
+    config_type_str = body.get("config_type")
+    data = body.get("data")
+    if not config_path or not config_type_str or data is None:
+        return _error(400, "config_path, config_type, and data are required")
+
+    try:
+        config_type = ConfigTypes(config_type_str)
+    except ValueError:
+        return _error(400, f"Unsupported config type: {config_type_str}")
+
+    try:
+        write_config(config_path, data, config_type)
+    except Exception as exc:
+        return _error(500, f"Failed to save config: {exc}")
+
+    path = Path(config_path)
+    return jsonify({
+        "saved": True,
+        "path": config_path,
+        "type": config_type.value,
+        **_file_metadata(path),
+    })
+
+
+# ── File browser ───────────────────────────────────────────────────
+
+
+@app.get("/api/v1/browse")
+def browse():
+    """List files and subdirectories for a server-side file browser."""
+    directory = request.args.get("directory", ".")
+    base = Path(directory).resolve()
+    if not base.exists() or not base.is_dir():
+        return _error(400, f"Not a directory: {directory}")
+
+    entries: list[dict[str, str]] = []
+    try:
+        for child in sorted(
+            base.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
+        ):
+            if child.name.startswith("."):
+                continue
+            if child.is_dir():
+                entries.append({"name": child.name, "type": "directory"})
+            elif child.suffix.lower() in CONFIG_EXTENSIONS:
+                entries.append({"name": child.name, "type": "file"})
+    except PermissionError as exc:
+        return _error(403, str(exc))
+
+    return jsonify({
+        "path": str(base),
+        "parent": str(base.parent) if base.parent != base else None,
+        "entries": entries,
+    })

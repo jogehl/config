@@ -7,7 +7,7 @@ name = "simple_config_builder"
 dynamic = ["version"]
 description = ''
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">3.12"
 license = "MIT"
 keywords = []
 authors = [
@@ -16,7 +16,7 @@ authors = [
 classifiers = [
   "Development Status :: 1 - Planning",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
@@ -25,7 +25,8 @@ dependencies = [
   "toml",
   "pyaml",
   "pydantic",
-  "fastapi[all]",
+  "flask",
+  "flask-cors",
 ]
 
 [project.optional-dependencies]
