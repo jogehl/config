@@ -1,4 +1,5 @@
-"""Python bridge to the pure-Rust configuration core.
+"""
+Python bridge to the pure-Rust configuration core.
 
 The functions here call into the compiled ``_native`` extension, which runs the
 `simple_config_builder_core` Rust crate directly.  This is the lower-level
@@ -31,7 +32,8 @@ ConfigFormat = Literal["json", "yaml", "toml"]
 
 
 def schema() -> dict[str, Any]:
-    """Return the JSON Schema produced by the Rust core type.
+    """
+    Return the JSON Schema produced by the Rust core type.
 
     The schema is generated at compile time via ``schemars`` and reflects
     every field declared in the Rust struct, including range constraints.
@@ -40,14 +42,15 @@ def schema() -> dict[str, Any]:
     -------
     >>> from simple_config_builder import rust_core
     >>> s = rust_core.schema()
-    >>> 'properties' in s
+    >>> "properties" in s
     True
     """
     return rust_core_schema()
 
 
 def defaults() -> dict[str, Any]:
-    """Return the Rust core default configuration as a plain dict.
+    """
+    Return the Rust core default configuration as a plain dict.
 
     Each key corresponds to a field in the Rust struct and carries the
     value declared as ``default`` in the Rust source.
@@ -65,7 +68,8 @@ def defaults() -> dict[str, Any]:
 
 
 def validate(data: dict[str, Any]) -> dict[str, Any]:
-    """Validate and normalize ``data`` against the Rust core type.
+    """
+    Validate and normalize ``data`` against the Rust core type.
 
     Passes ``data`` through the Rust-side ``garde`` validator.  Missing keys
     default to the Rust default value; extra keys raise an error.
@@ -96,7 +100,8 @@ def validate(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def load(path: str, format: ConfigFormat) -> dict[str, Any]:
-    """Load and validate a config file using the Rust core.
+    """
+    Load and validate a config file using the Rust core.
 
     Parameters
     ----------
@@ -134,7 +139,8 @@ def load(path: str, format: ConfigFormat) -> dict[str, Any]:
 
 
 def write(path: str, data: dict[str, Any], format: ConfigFormat) -> None:
-    """Validate ``data`` and write it to a file using the Rust core.
+    """
+    Validate ``data`` and write it to a file using the Rust core.
 
     Parameters
     ----------
@@ -165,7 +171,8 @@ def write(path: str, data: dict[str, Any], format: ConfigFormat) -> None:
 
 
 def apply_defaults(overrides: dict[str, Any]) -> dict[str, Any]:
-    """Merge ``overrides`` onto the Rust defaults and validate the result.
+    """
+    Merge ``overrides`` onto the Rust defaults and validate the result.
 
     Any key present in ``overrides`` replaces the corresponding default;
     all other fields keep their Rust-declared defaults.

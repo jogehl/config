@@ -1,5 +1,7 @@
 """
-rust_core_api.py — Low-level Rust core API example (simple_config_builder.rust_core).
+rust_core_api.py — Low-level Rust core API example.
+
+(Uses simple_config_builder.rust_core.)
 
 This uses the type-safe Rust layer directly, without the Python Configclass
 machinery. Useful for mixed Rust/Python projects where Rust owns the schema.
@@ -84,4 +86,6 @@ if "port" in overrides:
     data_with_env["port"] = int(overrides["port"])
 
 final = rust_core.validate(data_with_env)
-print(f"\nAfter env-var overrides: host={final['host']!r}  port={final['port']}")
+print(
+    f"\nAfter env-var overrides: host={final['host']!r}  port={final['port']}"
+)

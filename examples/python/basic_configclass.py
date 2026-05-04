@@ -16,13 +16,18 @@ from simple_config_builder import Configclass, Configparser, ConfigTypes, Field
 
 # ── Define config classes ────────────────────────────────────────────────────
 
+
 class DatabaseConfig(Configclass):
+    """Database connection settings."""
+
     host: str = "localhost"
     port: int = Field(gt=0, lt=65536, default=5432)
     max_connections: int = Field(gt=0, lt=257, default=10)
 
 
 class AppConfig(Configclass):
+    """Top-level application configuration."""
+
     name: str = "my-app"
     environment: str = "dev"
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
@@ -43,14 +48,14 @@ config.database.port = 3306
 print("\nMutated config:")
 print(json.dumps(config.model_dump(), indent=2))
 
-# ── 3. Validation error ───────────────────────────────────────────────────────
+# ── 3. Validation error ─────────────────────────────────────────────────────
 
 try:
     config.database.port = 99999  # exceeds lt=65536
 except Exception as exc:
     print(f"\nCaught expected validation error: {exc}")
 
-# ── 4. JSON Schema ────────────────────────────────────────────────────────────
+# ── 4. JSON Schema ──────────────────────────────────────────────────────────
 
 schema = AppConfig.model_json_schema()
 print("\nJSON Schema fields:", list(schema.get("properties", {}).keys()))
@@ -62,13 +67,14 @@ restored = AppConfig.model_validate_json(json_str)
 assert restored.name == config.name
 print(f"\nRound-trip via JSON OK (name={restored.name!r})")
 
-# ── 6. Configparser — load and save a YAML file ───────────────────────────────
+# ── 6. Configparser — load and save a YAML file ─────────────────────────────
 
 with tempfile.TemporaryDirectory() as tmpdir:
     cfg_path = Path(tmpdir) / "app.yaml"
 
     # Write the current config to disk.
     from simple_config_builder.config_io import write_config
+
     write_config(str(cfg_path), config, ConfigTypes.YAML)
     print(f"\nWrote config to {cfg_path}")
 

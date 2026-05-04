@@ -332,8 +332,7 @@ fn schema_type_from_annotation(annotation: Option<&str>) -> &'static str {
 /// ```
 pub fn annotation_requires_callable(annotation: Option<&str>) -> bool {
     matches!(annotation, Some("Callable"))
-        || annotation
-            .is_some_and(|annotation| annotation.ends_with(".Callable"))
+        || annotation.is_some_and(|annotation| annotation.ends_with(".Callable"))
 }
 
 /// Builds a minimal JSON Schema object for a dynamically-described config class.
@@ -358,10 +357,7 @@ pub fn annotation_requires_callable(annotation: Option<&str>) -> bool {
 /// assert_eq!(schema["properties"]["host"]["type"], "string");
 /// assert_eq!(schema["required"], serde_json::json!(["host"]));
 /// ```
-pub fn build_dynamic_object_schema(
-    title: &str,
-    fields: &[DynamicFieldSchema],
-) -> Value {
+pub fn build_dynamic_object_schema(title: &str, fields: &[DynamicFieldSchema]) -> Value {
     let properties = fields
         .iter()
         .map(|field| {
@@ -473,16 +469,12 @@ pub fn normalize_dynamic_field_definition(
 /// let invalid = DynamicFieldValidation { numeric_value: Some(0.0), ..valid };
 /// assert!(validate_dynamic_field(&invalid).is_err());
 /// ```
-pub fn validate_dynamic_field(
-    validation: &DynamicFieldValidation,
-) -> Result<(), ConfigError> {
+pub fn validate_dynamic_field(validation: &DynamicFieldValidation) -> Result<(), ConfigError> {
     let name = &validation.name;
 
     if let Some(gt) = validation.gt {
         let Some(number) = validation.numeric_value else {
-            return Err(ConfigError::Validation(format!(
-                "{name} must be numeric"
-            )));
+            return Err(ConfigError::Validation(format!("{name} must be numeric")));
         };
         if number <= gt {
             return Err(ConfigError::Validation(format!(
@@ -493,9 +485,7 @@ pub fn validate_dynamic_field(
 
     if let Some(lt) = validation.lt {
         let Some(number) = validation.numeric_value else {
-            return Err(ConfigError::Validation(format!(
-                "{name} must be numeric"
-            )));
+            return Err(ConfigError::Validation(format!("{name} must be numeric")));
         };
         if number >= lt {
             return Err(ConfigError::Validation(format!(
@@ -513,16 +503,11 @@ pub fn validate_dynamic_field(
     if annotation_requires_callable(validation.annotation.as_deref())
         && validation.kind != DynamicValueKind::Callable
     {
-        return Err(ConfigError::Validation(format!(
-            "{name} must be callable"
-        )));
+        return Err(ConfigError::Validation(format!("{name} must be callable")));
     }
 
     if validation.type_matches == Some(false) {
-        let expected = validation
-            .annotation
-            .as_deref()
-            .unwrap_or("object");
+        let expected = validation.annotation.as_deref().unwrap_or("object");
         return Err(ConfigError::Validation(format!(
             "{name} must be of type {expected}"
         )));
@@ -762,7 +747,11 @@ where
 ///
 /// write_to_path("/tmp/out.json", &Config { name: "demo".into() }, ConfigFormat::Json).unwrap();
 /// ```
-pub fn write_to_path<T>(path: impl AsRef<Path>, value: &T, format: ConfigFormat) -> Result<(), ConfigError>
+pub fn write_to_path<T>(
+    path: impl AsRef<Path>,
+    value: &T,
+    format: ConfigFormat,
+) -> Result<(), ConfigError>
 where
     T: Serialize,
 {
@@ -981,8 +970,7 @@ mod tests {
 
         validate(&config).unwrap();
         let text = write_to_string(&config, ConfigFormat::Yaml).unwrap();
-        let decoded: NestedStandaloneConfig =
-            load_from_str(&text, ConfigFormat::Yaml).unwrap();
+        let decoded: NestedStandaloneConfig = load_from_str(&text, ConfigFormat::Yaml).unwrap();
         let schema = schema_for_type::<NestedStandaloneConfig>().unwrap();
 
         assert_eq!(decoded, config);

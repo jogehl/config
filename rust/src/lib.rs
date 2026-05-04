@@ -1,12 +1,11 @@
 mod core_bindings;
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyModule, PyString, PyTuple, PyType};
 use pyo3::types::PyTypeMethods;
+use pyo3::types::{PyDict, PyList, PyModule, PyString, PyTuple, PyType};
 use serde::{Deserialize, Serialize};
 use simple_config_builder_core::{
-    annotation_requires_callable, build_dynamic_object_schema,
-    normalize_dynamic_field_definition, validate_dynamic_field,
-    ConfigError, DynamicFieldDefinition, DynamicFieldKind,
+    annotation_requires_callable, build_dynamic_object_schema, normalize_dynamic_field_definition,
+    validate_dynamic_field, ConfigError, DynamicFieldDefinition, DynamicFieldKind,
     DynamicFieldSchema, DynamicFieldValidation, DynamicValueKind,
 };
 use std::cell::RefCell;
@@ -96,10 +95,7 @@ impl FieldInfo {
 
 #[pyfunction(name = "Field")]
 #[pyo3(signature = (*_args, **kwargs))]
-fn field(
-    _args: Bound<'_, PyTuple>,
-    kwargs: Option<Bound<'_, PyDict>>,
-) -> PyResult<FieldInfo> {
+fn field(_args: Bound<'_, PyTuple>, kwargs: Option<Bound<'_, PyDict>>) -> PyResult<FieldInfo> {
     let Some(kwargs) = kwargs else {
         return Ok(FieldInfo {
             annotation: None,
@@ -112,9 +108,7 @@ fn field(
 
     Ok(FieldInfo {
         annotation: None,
-        default: kwargs
-            .get_item("default")?
-            .map(|value| value.unbind()),
+        default: kwargs.get_item("default")?.map(|value| value.unbind()),
         default_factory: kwargs
             .get_item("default_factory")?
             .map(|value| value.unbind()),
@@ -197,10 +191,7 @@ fn callable_from_reference<'py>(
         PyModule::import(py, &module_name)?.into_any()
     } else {
         let importlib_util = PyModule::import(py, "importlib.util")?;
-        let spec = importlib_util.call_method1(
-            "spec_from_file_location",
-            (&name, &file_path),
-        )?;
+        let spec = importlib_util.call_method1("spec_from_file_location", (&name, &file_path))?;
         if spec.is_none() {
             return Err(pyo3::exceptions::PyImportError::new_err(format!(
                 "Could not find spec for module {name} at {file_path}"
@@ -237,9 +228,7 @@ fn class_string(class_to_register: &Bound<'_, PyAny>) -> PyResult<String> {
         class_to_register
             .getattr("__module__")?
             .extract::<String>()?,
-        class_to_register
-            .getattr("__name__")?
-            .extract::<String>()?
+        class_to_register.getattr("__name__")?.extract::<String>()?
     ))
 }
 
@@ -267,7 +256,11 @@ fn is_literal_annotation<'py>(
     }
     let repr: String = origin.repr()?.extract()?;
     if repr.contains("typing.Literal") {
-        return Ok(Some(typing.call_method1("get_args", (annotation,))?.cast_into()?));
+        return Ok(Some(
+            typing
+                .call_method1("get_args", (annotation,))?
+                .cast_into()?,
+        ));
     }
     Ok(None)
 }
@@ -299,14 +292,16 @@ fn dynamic_value_kind(value: &Bound<'_, PyAny>) -> DynamicValueKind {
 
 fn dynamic_validation_error(error: ConfigError) -> PyErr {
     match error {
-        ConfigError::Validation(message) => {
-            pyo3::exceptions::PyValueError::new_err(message)
-        }
+        ConfigError::Validation(message) => pyo3::exceptions::PyValueError::new_err(message),
         other => pyo3::exceptions::PyValueError::new_err(other.to_string()),
     }
 }
 
-fn validate_value(name: &str, field: &Bound<'_, FieldInfo>, value: &Bound<'_, PyAny>) -> PyResult<()> {
+fn validate_value(
+    name: &str,
+    field: &Bound<'_, FieldInfo>,
+    value: &Bound<'_, PyAny>,
+) -> PyResult<()> {
     let py = value.py();
     let field_ref = field.borrow();
 
@@ -361,9 +356,11 @@ fn validate_value(name: &str, field: &Bound<'_, FieldInfo>, value: &Bound<'_, Py
 
 fn serialize_value<'py>(py: Python<'py>, value: &Bound<'py, PyAny>) -> PyResult<Py<PyAny>> {
     if value.is_callable() {
-        return Ok(callable_reference_to_dict(py, callable_reference_from_py(value)?)?
-            .into_any()
-            .unbind());
+        return Ok(
+            callable_reference_to_dict(py, callable_reference_from_py(value)?)?
+                .into_any()
+                .unbind(),
+        );
     }
 
     if let Ok(list) = value.cast::<PyList>() {
@@ -470,12 +467,7 @@ fn configure_config_class(py: Python<'_>, cls: Bound<'_, PyAny>) -> PyResult<()>
             }
             DynamicFieldKind::Required => Py::new(
                 py,
-                FieldInfo::from_definition(
-                    annotation.unbind(),
-                    &definition,
-                    None,
-                    None,
-                ),
+                FieldInfo::from_definition(annotation.unbind(), &definition, None, None),
             )?,
         };
         config_fields.set_item(name, field_info)?;
@@ -518,9 +510,7 @@ pub(crate) fn get_registered_class(py: Python<'_>, class_name: &str) -> PyResult
             .get(class_name)
             .map(|class_to_register| class_to_register.clone_ref(py))
             .ok_or_else(|| {
-                pyo3::exceptions::PyValueError::new_err(format!(
-                    "{class_name} is not registered."
-                ))
+                pyo3::exceptions::PyValueError::new_err(format!("{class_name} is not registered."))
             })
     })
 }
@@ -591,7 +581,11 @@ fn registry_list_subclasses(
 }
 
 #[pyfunction]
-fn init_config_instance(py: Python<'_>, instance: Bound<'_, PyAny>, data: Bound<'_, PyDict>) -> PyResult<()> {
+fn init_config_instance(
+    py: Python<'_>,
+    instance: Bound<'_, PyAny>,
+    data: Bound<'_, PyDict>,
+) -> PyResult<()> {
     let cls = instance.get_type().into_any();
     let fields = class_fields(&cls)?;
     let instance_dict = instance.getattr("__dict__")?.cast_into::<PyDict>()?;
@@ -639,7 +633,12 @@ fn init_config_instance(py: Python<'_>, instance: Bound<'_, PyAny>, data: Bound<
 }
 
 #[pyfunction]
-fn set_config_attr(py: Python<'_>, instance: Bound<'_, PyAny>, name: &str, value: Bound<'_, PyAny>) -> PyResult<bool> {
+fn set_config_attr(
+    py: Python<'_>,
+    instance: Bound<'_, PyAny>,
+    name: &str,
+    value: Bound<'_, PyAny>,
+) -> PyResult<bool> {
     let cls = instance.get_type().into_any();
     let fields = class_fields(&cls)?;
     let Some(field_obj) = fields.get_item(name)? else {
@@ -647,16 +646,16 @@ fn set_config_attr(py: Python<'_>, instance: Bound<'_, PyAny>, name: &str, value
     };
     let field = field_obj.cast_into::<FieldInfo>()?;
     validate_value(name, &field, &value)?;
-    instance.getattr("__dict__")?.cast_into::<PyDict>()?.set_item(name, value)?;
+    instance
+        .getattr("__dict__")?
+        .cast_into::<PyDict>()?
+        .set_item(name, value)?;
     let _ = py;
     Ok(true)
 }
 
 #[pyfunction]
-fn model_dump<'py>(
-    py: Python<'py>,
-    instance: Bound<'py, PyAny>,
-) -> PyResult<Bound<'py, PyDict>> {
+fn model_dump<'py>(py: Python<'py>, instance: Bound<'py, PyAny>) -> PyResult<Bound<'py, PyDict>> {
     let cls = instance.get_type().into_any();
     let fields = class_fields(&cls)?;
     let instance_dict = instance.getattr("__dict__")?.cast_into::<PyDict>()?;
@@ -704,10 +703,7 @@ fn model_validate_json<'py>(
 }
 
 #[pyfunction]
-fn model_json_schema<'py>(
-    py: Python<'py>,
-    cls: Bound<'py, PyAny>,
-) -> PyResult<Bound<'py, PyDict>> {
+fn model_json_schema<'py>(py: Python<'py>, cls: Bound<'py, PyAny>) -> PyResult<Bound<'py, PyDict>> {
     let fields = class_fields(&cls)?;
     let title: String = cls.getattr("__name__")?.extract()?;
     let mut field_schemas = Vec::new();
@@ -766,9 +762,7 @@ mod tests {
 
             register_bound_config_class(str_type).unwrap();
 
-            assert!(CLASS_REGISTRY.with(|registry| {
-                registry.borrow().contains_key(&class_name)
-            }));
+            assert!(CLASS_REGISTRY.with(|registry| { registry.borrow().contains_key(&class_name) }));
         });
     }
 

@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Attribute, ItemStruct, Path, Token};
 use syn::parse::{Parse, ParseStream};
+use syn::{parse_macro_input, Attribute, ItemStruct, Path, Token};
 
 struct ConfigclassArgs {
     crate_path: Path,

@@ -38,16 +38,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let base = ServiceConfig::default();
     write_to_path(&tmp, &base, ConfigFormat::Yaml)?;
     println!("Wrote baseline config to {}", tmp.display());
-    println!("  host={}  port={}  profile={}", base.host, base.port, base.profile);
+    println!(
+        "  host={}  port={}  profile={}",
+        base.host, base.port, base.profile
+    );
 
     // Load with env-var overrides.
     // Fields are matched by {PREFIX}_{FIELD} (upper-cased).
     // e.g.  APP_HOST=db.example.com  APP_PORT=3306
-    let config: ServiceConfig =
-        load_with_env_overrides(&tmp, ConfigFormat::Yaml, "APP")?;
+    let config: ServiceConfig = load_with_env_overrides(&tmp, ConfigFormat::Yaml, "APP")?;
 
     println!("\nAfter APP_* env-var overrides:");
-    println!("  host={}  port={}  profile={}", config.host, config.port, config.profile);
+    println!(
+        "  host={}  port={}  profile={}",
+        config.host, config.port, config.profile
+    );
 
     if config.host != base.host {
         println!("  → host overridden by APP_HOST");

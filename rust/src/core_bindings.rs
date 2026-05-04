@@ -3,9 +3,8 @@ use pyo3::types::{PyAny, PyModule};
 
 use simple_config_builder_core::{
     example::{
-        standalone_config_defaults, standalone_config_from_path,
-        standalone_config_merge_defaults, standalone_config_schema,
-        standalone_config_to_path, standalone_config_to_value,
+        standalone_config_defaults, standalone_config_from_path, standalone_config_merge_defaults,
+        standalone_config_schema, standalone_config_to_path, standalone_config_to_value,
         validate_standalone_config_map,
     },
     ConfigError, ConfigFormat,

@@ -6,7 +6,11 @@ fn python_executable() -> Option<String> {
     env::var("PYO3_PYTHON")
         .ok()
         .or_else(|| env::var("PYTHON_SYS_EXECUTABLE").ok())
-        .or_else(|| env::var("VIRTUAL_ENV").ok().map(|venv| format!("{venv}/bin/python")))
+        .or_else(|| {
+            env::var("VIRTUAL_ENV")
+                .ok()
+                .map(|venv| format!("{venv}/bin/python"))
+        })
         .or_else(|| env::var("PYTHON").ok())
 }
 

@@ -31,8 +31,10 @@ Serialize to a plain dict or JSON string at any time:
 
 >>> isinstance(cfg.model_dump(), dict)
 True
->>> import json; data = json.loads(cfg.model_dump_json())
->>> data['port']
+>>> import json
+...
+... data = json.loads(cfg.model_dump_json())
+>>> data["port"]
 443
 """
 

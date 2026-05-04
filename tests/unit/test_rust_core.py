@@ -11,6 +11,7 @@ class TestRustCore(TestCase):
     """Validate the pure Rust config core through the Python bindings."""
 
     def test_schema_contains_expected_fields(self):
+        """Schema contains expected top-level field names."""
         schema = rust_core.schema()
 
         self.assertEqual(schema["type"], "object")
@@ -18,6 +19,7 @@ class TestRustCore(TestCase):
         self.assertIn("name", schema["properties"])
 
     def test_validate_rejects_invalid_port(self):
+        """Validation raises ValueError for an out-of-range port."""
         with self.assertRaises(ValueError):
             rust_core.validate(
                 {
@@ -30,6 +32,7 @@ class TestRustCore(TestCase):
             )
 
     def test_defaults_can_be_overridden_and_written(self):
+        """apply_defaults merges overrides and round-trips to YAML."""
         merged = rust_core.apply_defaults({"profile": "prod", "port": 9000})
 
         self.assertEqual(merged["profile"], "prod")

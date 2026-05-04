@@ -31,7 +31,7 @@ Field access, mutation and validation:
 >>> cfg.database.port
 3306
 
->>> cfg.database.port = 0   # violates gt=0
+>>> cfg.database.port = 0  # violates gt=0
 Traceback (most recent call last):
     ...
 ValueError: ...
@@ -39,9 +39,9 @@ ValueError: ...
 Serialization:
 
 >>> d = cfg.model_dump()
->>> d['name']
+>>> d["name"]
 'production'
->>> d['database']['port']
+>>> d["database"]["port"]
 3306
 
 JSON round-trip:
@@ -68,7 +68,9 @@ from simple_config_builder._native import (
 )
 from simple_config_builder._native import model_dump as _model_dump
 from simple_config_builder._native import model_dump_json as _model_dump_json
-from simple_config_builder._native import model_json_schema as _model_json_schema
+from simple_config_builder._native import (
+    model_json_schema as _model_json_schema,
+)
 from simple_config_builder._native import (
     model_validate_json as _model_validate_json,
 )
@@ -97,7 +99,8 @@ from simple_config_builder._native import set_config_attr as _set_config_attr
 
 
 class Configclass(_NativeConfigclass):
-    """Base class for all config classes.
+    """
+    Base class for all config classes.
 
     Subclass this and declare fields as type-annotated class attributes.
     Plain Python values are treated as defaults; use :func:`Field` to add
@@ -118,7 +121,7 @@ class Configclass(_NativeConfigclass):
     >>> cfg.workers
     4
     >>> cfg.workers = 8
-    >>> cfg.model_dump()['workers']
+    >>> cfg.model_dump()["workers"]
     8
     """
 
@@ -127,7 +130,8 @@ class Configclass(_NativeConfigclass):
         return super().__new__(cls)
 
     def __init_subclass__(cls, **kwargs):
-        """Register the subclass and configure its fields in the Rust backend.
+        """
+        Register the subclass and configure its fields in the Rust backend.
 
         Called automatically when a class body is executed. You never need to
         call this directly.
@@ -137,7 +141,8 @@ class Configclass(_NativeConfigclass):
         ConfigClassRegistry.register(cls)
 
     def __init__(self, **data):
-        """Create a config instance, optionally overriding field defaults.
+        """
+        Create a config instance, optionally overriding field defaults.
 
         Parameters
         ----------
@@ -159,7 +164,8 @@ class Configclass(_NativeConfigclass):
         _init_config_instance(self, data)
 
     def __setattr__(self, name: str, value: Any):
-        """Set a field, running Rust-side validation before accepting the value.
+        """
+        Set a field, running Rust-side validation before accepting the value.
 
         Raises ``ValueError`` if the value violates a ``gt`` / ``lt``
         constraint or has the wrong type.
@@ -169,7 +175,8 @@ class Configclass(_NativeConfigclass):
         super().__setattr__(name, value)
 
     def model_dump(self) -> dict[str, Any]:
-        """Serialize the config instance to a plain Python dictionary.
+        """
+        Serialize the config instance to a plain Python dictionary.
 
         Nested :class:`Configclass` instances are also converted to dicts
         recursively.
@@ -181,12 +188,14 @@ class Configclass(_NativeConfigclass):
         ...     host: str = "localhost"
         ...     port: int = 8080
         >>> Config().model_dump()
-        {'_config_class_type': 'simple_config_builder.config.Config', 'host': 'localhost', 'port': 8080}
+        {'_config_class_type': 'simple_config_builder.config.Config', \
+'host': 'localhost', 'port': 8080}
         """
         return _model_dump(self)
 
     def model_dump_json(self) -> str:
-        """Serialize the config instance to a compact JSON string.
+        """
+        Serialize the config instance to a compact JSON string.
 
         Example
         -------
@@ -194,14 +203,15 @@ class Configclass(_NativeConfigclass):
         >>> import json
         >>> class Config(Configclass):
         ...     name: str = "demo"
-        >>> json.loads(Config().model_dump_json())['name']
+        >>> json.loads(Config().model_dump_json())["name"]
         'demo'
         """
         return _model_dump_json(self)
 
     @classmethod
     def model_validate(cls, data: dict[str, Any]) -> "Configclass":
-        """Build a config instance from a plain dictionary, validating all fields.
+        """
+        Build a config instance from a plain dictionary, validating all fields.
 
         Parameters
         ----------
@@ -214,7 +224,9 @@ class Configclass(_NativeConfigclass):
         >>> class Config(Configclass):
         ...     host: str = "localhost"
         ...     port: int = 8080
-        >>> cfg = Config.model_validate({'host': 'db.example.com', 'port': 5432})
+        >>> cfg = Config.model_validate(
+        ...     {"host": "db.example.com", "port": 5432}
+        ... )
         >>> cfg.host
         'db.example.com'
         """
@@ -224,7 +236,10 @@ class Configclass(_NativeConfigclass):
 
     @classmethod
     def model_validate_json(cls, data: str | bytes) -> "Configclass":
-        """Build a config instance from a JSON string or bytes, validating all fields.
+        """
+        Build a config instance from a JSON string or bytes.
+
+        All fields are validated.
 
         Example
         -------
@@ -239,7 +254,8 @@ class Configclass(_NativeConfigclass):
 
     @classmethod
     def model_json_schema(cls) -> dict[str, Any]:
-        """Return a JSON Schema dict describing this config class.
+        """
+        Return a JSON Schema dict describing this config class.
 
         The schema reflects field types and ``gt`` / ``lt`` constraints and
         can be used for validation in other tools or for documentation.
@@ -250,14 +266,15 @@ class Configclass(_NativeConfigclass):
         >>> class Config(Configclass):
         ...     port: int = Field(gt=0, lt=65536, default=8080)
         >>> schema = Config.model_json_schema()
-        >>> 'port' in schema.get('properties', {})
+        >>> "port" in schema.get("properties", {})
         True
         """
         return _model_json_schema(cls)
 
 
 class ConfigClassRegistry:
-    """Global registry of all :class:`Configclass` subclasses.
+    """
+    Global registry of all :class:`Configclass` subclasses.
 
     Classes are registered automatically when their class body is executed
     (via :meth:`Configclass.__init_subclass__`). You only need to interact
@@ -266,18 +283,22 @@ class ConfigClassRegistry:
 
     Example
     -------
-    >>> from simple_config_builder.config import Configclass, ConfigClassRegistry
+    >>> from simple_config_builder.config import (
+    ...     Configclass,
+    ...     ConfigClassRegistry,
+    ... )
     >>> class MyConfig(Configclass):
     ...     value: int = 1
     >>> ConfigClassRegistry.is_registered(MyConfig)
     True
-    >>> 'config.MyConfig' in ConfigClassRegistry.list_classes() or any('MyConfig' in c for c in ConfigClassRegistry.list_classes())
+    >>> any("MyConfig" in c for c in ConfigClassRegistry.list_classes())
     True
     """
 
     @classmethod
     def get_class_str_from_class(cls, class_to_register: type):
-        """Return the fully-qualified ``module.ClassName`` string for a class.
+        """
+        Return the fully-qualified ``module.ClassName`` string for a class.
 
         This string is used as the key in the registry and as the
         ``_config_class_type`` value embedded in serialized config files.
@@ -286,7 +307,8 @@ class ConfigClassRegistry:
 
     @classmethod
     def register[T](cls, class_to_register: type[T]):
-        """Register a class in the global registry.
+        """
+        Register a class in the global registry.
 
         Called automatically by :meth:`Configclass.__init_subclass__`.
         Raises ``ValueError`` if the class is already registered.
@@ -295,7 +317,11 @@ class ConfigClassRegistry:
 
     @classmethod
     def list_classes(cls) -> list[str]:
-        """Return fully-qualified names of all registered :class:`Configclass` subclasses."""
+        """
+        Return fully-qualified names.
+
+        Returns all registered :class:`Configclass` subclasses.
+        """
         return _registry_list_classes()
 
     @classmethod
@@ -305,7 +331,8 @@ class ConfigClassRegistry:
 
     @classmethod
     def get(cls, class_name) -> Type[Configclass]:
-        """Look up and return a registered class by its fully-qualified name.
+        """
+        Look up and return a registered class by its fully-qualified name.
 
         Parameters
         ----------
@@ -321,7 +348,8 @@ class ConfigClassRegistry:
 
     @classmethod
     def get_class_attributes(cls, class_name: str) -> dict[str, Any]:
-        """Return the declared fields of a registered class as a dict.
+        """
+        Return the declared fields of a registered class as a dict.
 
         Keys are field names; values are :class:`FieldInfo` objects from
         the Rust backend.
@@ -336,9 +364,10 @@ class ConfigClassRegistry:
         include_base: bool = False,
         recursive: bool = False,
     ) -> list[str]:
-        """Return fully-qualified names of registered subclasses of ``base_class``.
+        """
+        Return fully-qualified names of registered subclasses.
 
-        Parameters
+        Returns subclasses of ``base_class``.
         ----------
         base_class:
             The class (or its fully-qualified name string) whose subclasses

@@ -66,11 +66,7 @@ pub(crate) fn py_to_json_value(value: &Bound<'_, PyAny>) -> PyResult<Value> {
 pub(crate) fn json_value_to_py(py: Python<'_>, value: Value) -> PyResult<Py<PyAny>> {
     match value {
         Value::Null => Ok(py.None()),
-        Value::Bool(value) => Ok(value
-            .into_pyobject(py)?
-            .to_owned()
-            .into_any()
-            .unbind()),
+        Value::Bool(value) => Ok(value.into_pyobject(py)?.to_owned().into_any().unbind()),
         Value::Number(value) => {
             if let Some(value) = value.as_i64() {
                 Ok(value.into_pyobject(py)?.into_any().unbind())
@@ -131,8 +127,9 @@ pub(crate) fn io_parse_yaml(py: Python<'_>, config_file: String) -> PyResult<Py<
         return Ok(PyDict::new(py).into_any().unbind());
     }
     let content = fs::read_to_string(config_file)?;
-    let value = serde_yml::from_str(&content)
-        .map_err(|error: serde_yml::Error| pyo3::exceptions::PyValueError::new_err(error.to_string()))?;
+    let value = serde_yml::from_str(&content).map_err(|error: serde_yml::Error| {
+        pyo3::exceptions::PyValueError::new_err(error.to_string())
+    })?;
     json_value_to_py(py, value)
 }
 
@@ -142,15 +139,19 @@ pub(crate) fn io_parse_toml(py: Python<'_>, config_file: String) -> PyResult<Py<
         return Ok(PyDict::new(py).into_any().unbind());
     }
     let content = fs::read_to_string(config_file)?;
-    let value: toml::Value = toml::from_str(&content)
-        .map_err(|error: toml::de::Error| pyo3::exceptions::PyValueError::new_err(error.to_string()))?;
+    let value: toml::Value = toml::from_str(&content).map_err(|error: toml::de::Error| {
+        pyo3::exceptions::PyValueError::new_err(error.to_string())
+    })?;
     let value = serde_json::to_value(value)
         .map_err(|error| pyo3::exceptions::PyValueError::new_err(error.to_string()))?;
     json_value_to_py(py, value)
 }
 
 #[pyfunction]
-pub(crate) fn io_construct_config(py: Python<'_>, config_data: Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+pub(crate) fn io_construct_config(
+    py: Python<'_>,
+    config_data: Bound<'_, PyAny>,
+) -> PyResult<Py<PyAny>> {
     if let Ok(list) = config_data.cast::<PyList>() {
         let out = PyList::empty(py);
         for item in list.iter() {
@@ -208,7 +209,10 @@ pub(crate) fn io_construct_config(py: Python<'_>, config_data: Bound<'_, PyAny>)
         }
     }
 
-    Ok(config_class.bind(py).call_method1("model_validate", (out,))?.unbind())
+    Ok(config_class
+        .bind(py)
+        .call_method1("model_validate", (out,))?
+        .unbind())
 }
 
 #[pyfunction]
@@ -248,8 +252,9 @@ pub(crate) fn io_write_json(config_file: String, config_data: Bound<'_, PyAny>) 
 #[pyfunction]
 pub(crate) fn io_write_yaml(config_file: String, config_data: Bound<'_, PyAny>) -> PyResult<()> {
     let value = py_to_json_value(&config_data)?;
-    let content = serde_yml::to_string(&value)
-        .map_err(|error: serde_yml::Error| pyo3::exceptions::PyValueError::new_err(error.to_string()))?;
+    let content = serde_yml::to_string(&value).map_err(|error: serde_yml::Error| {
+        pyo3::exceptions::PyValueError::new_err(error.to_string())
+    })?;
     fs::write(config_file, content)?;
     Ok(())
 }
@@ -257,8 +262,9 @@ pub(crate) fn io_write_yaml(config_file: String, config_data: Bound<'_, PyAny>) 
 #[pyfunction]
 pub(crate) fn io_write_toml(config_file: String, config_data: Bound<'_, PyAny>) -> PyResult<()> {
     let value = py_to_json_value(&config_data)?;
-    let content = toml::to_string(&value)
-        .map_err(|error: toml::ser::Error| pyo3::exceptions::PyValueError::new_err(error.to_string()))?;
+    let content = toml::to_string(&value).map_err(|error: toml::ser::Error| {
+        pyo3::exceptions::PyValueError::new_err(error.to_string())
+    })?;
     fs::write(config_file, content)?;
     Ok(())
 }

@@ -11,11 +11,18 @@ Write a config file once, then use ``Configparser`` throughout the application:
 
 .. code-block:: python
 
-    from simple_config_builder import Configclass, Configparser, ConfigTypes, Field
+    from simple_config_builder import (
+        Configclass,
+        Configparser,
+        ConfigTypes,
+        Field,
+    )
+
 
     class ServerConfig(Configclass):
         host: str = "localhost"
         port: int = Field(gt=0, lt=65536, default=8080)
+
 
     # Parse an existing file (format inferred from extension):
     parser = Configparser("server.yaml")
@@ -43,7 +50,8 @@ from simple_config_builder.config_types import ConfigTypes
 
 
 class Configparser:
-    """Load, save and optionally watch a config file.
+    """
+    Load, save and optionally watch a config file.
 
     The file format is detected from the file extension (``.json``, ``.yaml``,
     ``.toml``) unless you supply ``config_type`` explicitly.
@@ -83,7 +91,8 @@ class Configparser:
         autosave: bool = False,
         autoreload: bool = False,
     ):
-        """Load the config file and initialise the parser.
+        """
+        Load the config file and initialise the parser.
 
         Parameters
         ----------
@@ -138,7 +147,8 @@ class Configparser:
         autosave: bool = False,
         autoreload: bool = False,
     ) -> "Configparser":
-        """Create a :class:`Configparser` pre-populated with in-memory data.
+        """
+        Create a :class:`Configparser` pre-populated with in-memory data.
 
         The file is read first (to satisfy the constructor), then
         :attr:`config_data` is replaced with ``data``.  Use :meth:`save`
@@ -173,7 +183,8 @@ class Configparser:
         return configparser
 
     def _get_config_type(self) -> ConfigTypes:
-        """Infer the config format from the file extension.
+        """
+        Infer the config format from the file extension.
 
         Returns
         -------
@@ -194,7 +205,11 @@ class Configparser:
         raise ValueError("The configuration type is not supported.")
 
     def _auto_save_config(self):
-        """Schedule a background timer that writes :attr:`config_data` when it changes."""
+        """
+        Schedule a background timer.
+
+        Writes :attr:`config_data` when it changes.
+        """
         self._old_config_data = self.config_data
 
         def _save_config():
@@ -209,7 +224,11 @@ class Configparser:
         Timer(1, _save_config).start()
 
     def _auto_reload_config(self):
-        """Schedule a background timer that refreshes :attr:`config_data` when the file changes."""
+        """
+        Schedule a background timer.
+
+        Refreshes :attr:`config_data` when the file changes.
+        """
 
         # Check for changes in the configuration file
         def _reload_config():
@@ -224,7 +243,8 @@ class Configparser:
     def contains(
         self, config_field_type: Any = None, config_field: str | None = None
     ) -> bool:
-        """Check whether :attr:`config_data` contains a given field name or type.
+        """
+        Check whether :attr:`config_data` contains a given field name or type.
 
         Searches recursively through nested :class:`Configclass` objects,
         dicts and lists.  Exactly one of ``config_field_type`` or
@@ -294,14 +314,11 @@ class Configparser:
             return False
 
         if config_field_type is None and config_field is None:
-            msg = (
-                "Either config_field_type or config_field " "must be provided."
-            )
+            msg = "Either config_field_type or config_field must be provided."
             raise ValueError(msg)
         if config_field_type is not None and config_field is not None:
             msg = (
-                "Only one of config_field_type or config_field"
-                "can be provided."
+                "Only one of config_field_type or config_fieldcan be provided."
             )
             raise ValueError(msg)
         if config_field is not None:
@@ -317,7 +334,12 @@ class Configparser:
         write_config(self.config_file, self.config_data, self.config_type)
 
     def reload(self):
-        """Re-read :attr:`config_file` and update :attr:`config_data` in place."""
+        """
+        Reload config from disk.
+
+        Re-reads :attr:`config_file` and updates :attr:`config_data`
+        in place.
+        """
         if self.config_type is None:
             return
         self.config_data = parse_config(self.config_file, self.config_type)

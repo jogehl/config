@@ -2,7 +2,11 @@
 
 
 def import_modules_from_directory(directory: str):
-    """Recursively import all Python files in ``directory`` that contain Configclass subclasses.
+    """
+    Recursively import Configclass modules.
+
+    Imports all Python files in ``directory`` that contain
+    Configclass subclasses.
 
     Walking the directory tree, this function imports any ``.py`` file
     (excluding ``__init__.py``) whose source contains the string

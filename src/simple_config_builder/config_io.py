@@ -27,9 +27,11 @@ Example
     from simple_config_builder import Configclass, ConfigTypes
     from simple_config_builder.config_io import write_config, parse_config
 
+
     class Config(Configclass):
         host: str = "localhost"
         port: int = 8080
+
 
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
         path = f.name
@@ -43,7 +45,9 @@ Example
 
 from typing import Any
 
-from simple_config_builder._native import io_construct_config as construct_config
+from simple_config_builder._native import (
+    io_construct_config as construct_config,
+)
 from simple_config_builder._native import io_parse_config as parse_config
 from simple_config_builder._native import io_parse_json as parse_json
 from simple_config_builder._native import io_parse_toml as parse_toml
