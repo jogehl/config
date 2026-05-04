@@ -11,6 +11,23 @@ on:
 
 
 jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Build crates
+        run: cargo build --workspace --all-features
+      - name: Run tests
+        run: cargo test --workspace --all-features
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -30,9 +47,9 @@ jobs:
       - name: Run format check
         run: |
           ruff check
-  
-  build: 
-    needs: test
+
+  build:
+    needs: [rust, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
