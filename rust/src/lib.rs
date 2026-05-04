@@ -219,7 +219,7 @@ fn type_name(value: &Bound<'_, PyAny>) -> PyResult<String> {
     if let Ok(name) = value.getattr("__name__") {
         return name.extract();
     }
-    Ok(value.repr()?.extract()?)
+    value.repr()?.extract()
 }
 
 fn class_string(class_to_register: &Bound<'_, PyAny>) -> PyResult<String> {
@@ -323,7 +323,7 @@ fn validate_value(
     let literal_matches = if let Some(args) = is_literal_annotation(annotation)? {
         let mut matched = false;
         for item in args.iter_borrowed() {
-            if value.eq(&item)? {
+            if value.eq(item)? {
                 matched = true;
                 break;
             }

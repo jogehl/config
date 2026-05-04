@@ -8,6 +8,17 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        required: true
+        default: 'minor'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
 
 
 jobs:
@@ -67,8 +78,8 @@ jobs:
           hatch build
   
   increase-version:
-    # only run on main branch
-    if: github.ref == 'refs/heads/main'
+    # only run when manually triggered via workflow_dispatch
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     needs: build
@@ -88,7 +99,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "actions@github.com"
-          hatch version minor
+          hatch version ${{ github.event.inputs.bump_type || 'minor' }}
           git add .
           git commit -m "Increase version ($(hatch version))"
           git push
@@ -98,20 +109,18 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
-    # only run on main branch
-    if: github.ref == 'refs/heads/main'
+    # only runs in the same workflow_dispatch run, after version bump
+    if: github.event_name == 'workflow_dispatch'
     needs: increase-version
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org
     steps:
-      # force a repull of the code to get the newest version from the repo
       - uses: actions/checkout@v4
       - run: |
           git fetch --prune --unshallow
           git pull origin main
-
       - name: Setup python
         uses: actions/setup-python@v2
         with:
@@ -129,8 +138,9 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy-pages:
-    # only run on main branch
-    if: github.ref == 'refs/heads/main'
+    # runs in the same workflow_dispatch run, after version bump
+    # No PAT or tag trigger needed — jobs in the same run share the token.
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     needs: increase-version
