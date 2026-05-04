@@ -15,7 +15,9 @@ path = "rust/src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+garde = { version = "0.22", features = ["derive"] }
 pyo3 = { version = "0.28.3", features = ["serde"] }
+schemars = { version = "1.0", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yml = "0.0.12"
@@ -24,7 +26,5 @@ simple_config_builder_macros = { path = "simple_config_builder_macros", features
 toml = "1"
 
 [dev-dependencies]
-garde = { version = "0.22", features = ["derive"] }
 pyo3 = { version = "0.28.3", features = ["auto-initialize"] }
-schemars = { version = "1.0", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }

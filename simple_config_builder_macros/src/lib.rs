@@ -50,10 +50,68 @@ fn derives_default(attrs: &[Attribute]) -> bool {
     })
 }
 
+/// Remove derives that the macro injects itself to prevent duplicate impls.
+///
+/// The managed set is: `Debug`, `Clone`, `Serialize`, `Deserialize`,
+/// `JsonSchema`, `Validate`.  `Default` and all other derives are kept.
+fn filter_managed_derives(attrs: Vec<Attribute>) -> Vec<Attribute> {
+    const MANAGED: &[&str] = &[
+        "Debug",
+        "Clone",
+        "Serialize",
+        "Deserialize",
+        "JsonSchema",
+        "Validate",
+    ];
+
+    let mut result = Vec::new();
+    for attr in attrs {
+        if !path_ends_with(attr.path(), "derive") {
+            result.push(attr);
+            continue;
+        }
+
+        let mut kept: Vec<Path> = Vec::new();
+        let _ = attr.parse_nested_meta(|meta| {
+            let is_managed = meta
+                .path
+                .segments
+                .last()
+                .map(|s| MANAGED.contains(&s.ident.to_string().as_str()))
+                .unwrap_or(false);
+            if !is_managed {
+                kept.push(meta.path.clone());
+            }
+            Ok(())
+        });
+
+        if !kept.is_empty() {
+            result.push(syn::parse_quote!(#[derive(#(#kept),*)]));
+        }
+    }
+    result
+}
+
+/// Inject `#[garde(skip)]` on every field that carries no `#[garde(...)]`
+/// attribute, so the struct compiles with `#[derive(garde::Validate)]`
+/// without requiring the user to annotate every field manually.
+fn inject_garde_skip(fields: &mut syn::Fields) {
+    let skip_attr: Attribute = syn::parse_quote!(#[garde(skip)]);
+    for field in fields.iter_mut() {
+        let has_garde = field
+            .attrs
+            .iter()
+            .any(|attr| path_ends_with(attr.path(), "garde"));
+        if !has_garde {
+            field.attrs.push(skip_attr.clone());
+        }
+    }
+}
+
 #[proc_macro_attribute]
 pub fn configclass(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(_attr as ConfigclassArgs);
-    let input = parse_macro_input!(item as ItemStruct);
+    let mut input = parse_macro_input!(item as ItemStruct);
     if !derives_default(&input.attrs) {
         return syn::Error::new_spanned(
             &input.ident,
@@ -63,6 +121,14 @@ pub fn configclass(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .into();
     }
 
+    // Strip derives that the macro injects to avoid duplicate impls.
+    let old_attrs = std::mem::take(&mut input.attrs);
+    input.attrs = filter_managed_derives(old_attrs);
+
+    // Auto-skip unannotated fields so garde validation compiles without
+    // requiring the user to write #[garde(skip)] on every plain field.
+    inject_garde_skip(&mut input.fields);
+
     let ident = &input.ident;
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -71,8 +137,12 @@ pub fn configclass(_attr: TokenStream, item: TokenStream) -> TokenStream {
     {
         let crate_path = &args.crate_path;
         quote! {
-            #[pyo3::pyclass(subclass, extends = #crate_path::Configclass)]
-            #[derive(serde::Serialize, serde::Deserialize)]
+            #[pyo3::pyclass(subclass, extends = #crate_path::Configclass, from_py_object)]
+            #[derive(
+                Debug, Clone,
+                serde::Serialize, serde::Deserialize,
+                garde::Validate, schemars::JsonSchema,
+            )]
             #input
 
             #[pyo3::pymethods]
@@ -93,7 +163,11 @@ pub fn configclass(_attr: TokenStream, item: TokenStream) -> TokenStream {
     {
         let _ = args;
         quote! {
-            #[derive(serde::Serialize, serde::Deserialize)]
+            #[derive(
+                Debug, Clone,
+                serde::Serialize, serde::Deserialize,
+                garde::Validate, schemars::JsonSchema,
+            )]
             #input
         }
         .into()
