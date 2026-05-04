@@ -1,0 +1,30 @@
+[package]
+name = "simple_config_builder"
+version = "1.6.0"
+edition = "2021"
+license = "MIT"
+description = "Rust extension base for simple_config_builder Configclass"
+build = "build.rs"
+
+[workspace]
+members = ["simple_config_builder_core", "simple_config_builder_macros"]
+
+[lib]
+name = "simple_config_builder"
+path = "rust/src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.28.3", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yml = "0.0.12"
+simple_config_builder_core = { path = "simple_config_builder_core" }
+simple_config_builder_macros = { path = "simple_config_builder_macros", features = ["python"] }
+toml = "1"
+
+[dev-dependencies]
+garde = { version = "0.22", features = ["derive"] }
+pyo3 = { version = "0.28.3", features = ["auto-initialize"] }
+schemars = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }

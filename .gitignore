@@ -5,3 +5,5 @@
 # exclude all __pycache__ directories
 __pycache__/
 /dist
+**/target
+src/simple_config_builder/*.so

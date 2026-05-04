@@ -7,8 +7,6 @@ import os
 from collections.abc import Callable
 from typing import Literal
 from unittest import TestCase
-from pydantic import ValidationError, field_validator
-from pydantic_core import to_json
 
 from simple_config_builder import ConfigClassRegistry, Configclass, Field
 
@@ -99,7 +97,7 @@ class TestConfig(TestCase):
             value1: str
 
         print(G.__dict__)
-        self.assertTrue("value1" in G.model_fields)
+        self.assertTrue("value1" in G.__config_fields__)
 
     def test_config_class_decorator_config_field_gt(self):
         """Test the config_field decorator with greater than constraint."""
@@ -109,7 +107,7 @@ class TestConfig(TestCase):
 
         c = H()
         c.value1 = 1
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValueError):
             c.value1 = -1
 
     def test_config_class_decorator_config_field_lt(self):
@@ -120,7 +118,7 @@ class TestConfig(TestCase):
 
         c = Il()
         c.value1 = -1
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValueError):
             c.value1 = 1
 
     def test_config_class_decorator_config_field_in(self):
@@ -134,23 +132,16 @@ class TestConfig(TestCase):
         with self.assertRaises(ValueError):
             c.value1 = 3
 
-    def test_config_class_decorator_config_field_constraints(self):
-        """Test the config_field decorator with custom constraints."""
+    def test_config_class_rejects_wrong_type(self):
+        """Test native type constraints."""
 
         class K(Configclass):
             value1: int
 
-            @field_validator("value1")
-            def check_value1(cls, v):
-                # check if value % 2 is 0
-                if v % 2 != 0:
-                    raise ValueError("value1 must be an even number")
-                return v
-
         c = K(value1=0)
         c.value1 = 2
         with self.assertRaises(ValueError):
-            c.value1 = 1
+            c.value1 = "1"
 
     def test_config_class_decorator_config_field_gt_lt(self):
         """Test decorator with both greater and less constraints."""
@@ -160,9 +151,9 @@ class TestConfig(TestCase):
 
         c = L()
         c.value1 = 5
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValueError):
             c.value1 = -1
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValueError):
             c.value1 = 11
 
     def test_type_attribute_is_added(self):
@@ -175,6 +166,21 @@ class TestConfig(TestCase):
             "_config_class_type" in M.__private_attributes__, True
         )
         inspect.getmembers(M)
+
+    def test_model_json_schema(self):
+        """Test that dynamic config classes expose a schema."""
+
+        class ModelSchemaConfig(Configclass):
+            value1: str
+            value2: int = Field(default=1)
+
+        schema = ModelSchemaConfig.model_json_schema()
+
+        self.assertEqual(schema["title"], "ModelSchemaConfig")
+        self.assertEqual(schema["type"], "object")
+        self.assertEqual(schema["properties"]["value1"]["type"], "string")
+        self.assertEqual(schema["properties"]["value2"]["type"], "integer")
+        self.assertEqual(schema["required"], ["value1"])
 
     def test_callable_type(self):
         """Test that the type attribute is added to the class."""
@@ -253,7 +259,7 @@ class TestConfig(TestCase):
         n = OClass(func1=func)
         self.assertEqual(dis.dis(func), dis.dis(n.func1))
 
-        json = to_json(n)
+        json = n.model_dump_json()
         n = OClass.model_validate_json(json)
         self.assertEqual(func.__code__, n.func1.__code__)
 

@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.12,<2"]
+build-backend = "maturin"
 
 [project]
 name = "simple_config_builder"
-dynamic = ["version"]
+version = "1.6.0"
 description = ''
 readme = "README.md"
 requires-python = ">=3.12"
@@ -17,6 +17,8 @@ classifiers = [
   "Development Status :: 1 - Planning",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Rust",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
@@ -24,7 +26,6 @@ dependencies = [
   "click",
   "toml",
   "pyaml",
-  "pydantic",
   "fastapi[all]",
 ]
 
@@ -49,12 +50,20 @@ Source = "https://github.com/jogehl/config"
 [project.scripts]
 simple_config_builder = "simple_config_builder.cli:config"
 
-[tool.hatch.version]
-  path = "src/simple_config_builder/__about__.py"
+[tool.maturin]
+python-source = "src"
+module-name = "simple_config_builder._native"
+features = ["pyo3/extension-module"]
 
 [tool.hatch.envs.default]
 type = "virtual"
 path = ".venv"
+
+[tool.hatch.envs.default.scripts]
+# Run unit tests (requires `maturin develop` first to build the native extension)
+test = "pytest {args:tests}"
+# Run doctests embedded in module docstrings (requires `maturin develop` first)
+doctest = "pytest --doctest-modules {args:src/simple_config_builder}"
 
 [tool.hatch.envs.types]
 extra-dependencies = [

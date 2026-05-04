@@ -1,342 +1,358 @@
 """
-Implementation of the Configclass and the Registry.
+Configclass — declarative, Rust-validated configuration classes.
 
-The Configclass are used to create a class with constraints
-on the fields. The constraints are defined using the Field from pydantic.
-The Configclass adds the following functionality:
+Subclass :class:`Configclass` and declare fields as annotated class attributes.
+Defaults and validation constraints are expressed via :func:`Field`.
 
-- Registers the class in the ConfigClassRegistry
-- Adds a _config_class_type attribute to the class
-- Converts the class to a pyserde class for serialization and deserialization
-A class decorated with configclass fulfills the Configclass protocol.
+Example — defining a nested config
+-----------------------------------
+>>> from simple_config_builder.config import Configclass, Field
 
-Example:
-    ``` python
-    from simple_config_builder import Configclass, Field
+>>> class DatabaseConfig(Configclass):
+...     host: str = "localhost"
+...     port: int = Field(gt=0, lt=65536, default=5432)
 
-    class MyClass(Configclass):
-        x:
-            int = Field(gt=0, lt=10)
-        y:
-            Literal["a", "b", "c"] = Field(default="a")
+>>> class AppConfig(Configclass):
+...     name: str = "my-app"
+...     environment: str = "dev"
+...     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+...     debug: bool = False
 
-    my_class: Configclass = MyClass(x=5, y="a")
-    my_class.x = 10  # Raises ValueError
-    my_class.y = "d"  # Raises ValueError
-    ```
+>>> cfg = AppConfig()
+>>> cfg.name
+'my-app'
+>>> cfg.database.port
+5432
+
+Field access, mutation and validation:
+
+>>> cfg.name = "production"
+>>> cfg.database.port = 3306
+>>> cfg.database.port
+3306
+
+>>> cfg.database.port = 0   # violates gt=0
+Traceback (most recent call last):
+    ...
+ValueError: ...
+
+Serialization:
+
+>>> d = cfg.model_dump()
+>>> d['name']
+'production'
+>>> d['database']['port']
+3306
+
+JSON round-trip:
+
+>>> import json
+>>> restored = AppConfig.model_validate_json(cfg.model_dump_json())
+>>> restored.name
+'production'
 """
 
 from __future__ import annotations
 
-import importlib.util
+from typing import Any, Type
 
-from pydantic import (
-    BaseModel,
-    PrivateAttr,
-    SerializerFunctionWrapHandler,
-    model_serializer,
-    model_validator,
+from simple_config_builder._native import (
+    Configclass as _NativeConfigclass,
 )
-from pydantic import Field
-
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Type,
+from simple_config_builder._native import Field
+from simple_config_builder._native import (
+    configure_config_class as _configure_config_class,
 )
+from simple_config_builder._native import (
+    init_config_instance as _init_config_instance,
+)
+from simple_config_builder._native import model_dump as _model_dump
+from simple_config_builder._native import model_dump_json as _model_dump_json
+from simple_config_builder._native import model_json_schema as _model_json_schema
+from simple_config_builder._native import (
+    model_validate_json as _model_validate_json,
+)
+from simple_config_builder._native import (
+    registry_get as _registry_get,
+)
+from simple_config_builder._native import (
+    registry_get_class_attributes as _registry_get_class_attributes,
+)
+from simple_config_builder._native import (
+    registry_get_class_str_from_class as _registry_get_class_str_from_class,
+)
+from simple_config_builder._native import (
+    registry_is_registered as _registry_is_registered,
+)
+from simple_config_builder._native import (
+    registry_list_classes as _registry_list_classes,
+)
+from simple_config_builder._native import (
+    registry_list_subclasses as _registry_list_subclasses,
+)
+from simple_config_builder._native import (
+    registry_register_class as _registry_register_class,
+)
+from simple_config_builder._native import set_config_attr as _set_config_attr
 
-if TYPE_CHECKING:
-    from typing import ClassVar
-from pydantic import ConfigDict
 
+class Configclass(_NativeConfigclass):
+    """Base class for all config classes.
 
-class Configclass(BaseModel):
-    """Configclass base class."""
+    Subclass this and declare fields as type-annotated class attributes.
+    Plain Python values are treated as defaults; use :func:`Field` to add
+    validation constraints (``gt``, ``lt``) or a ``default_factory``.
 
-    _config_class_type: str = PrivateAttr()
+    The Rust backend collects field metadata on class definition,
+    validates every attribute assignment, and provides serialization.
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        # Set _config_class_type to the path and class name of the class
-        self._config_class_type = (
-            f"{self.__class__.__module__}.{self.__class__.__name__}"
-        )
+    Example
+    -------
+    >>> from simple_config_builder.config import Configclass, Field
+    >>> class Config(Configclass):
+    ...     name: str = "default"
+    ...     workers: int = Field(gt=0, lt=33, default=4)
+    >>> cfg = Config()
+    >>> cfg.name
+    'default'
+    >>> cfg.workers
+    4
+    >>> cfg.workers = 8
+    >>> cfg.model_dump()['workers']
+    8
+    """
 
-    def _callable_serialization(self, value: Any) -> dict[str, Any]:
-        """
-        Serialize a callable to a dictionary.
-
-        Parameters
-        ----------
-        value: The callable to serialize.
-
-        Returns
-        -------
-        A dictionary with the type, module, name and file path of the callable.
-        """
-        try:
-            importlib.import_module(value.__module__)
-            file_path = ""
-        except ImportError:
-            file_path = value.__code__.co_filename
-        return {
-            "type": "callable",
-            "module": value.__module__,
-            "name": value.__name__,
-            "file_path": file_path,
-        }
-
-    @classmethod
-    def _callable_deserialization(cls, value: dict[str, Any]) -> Any:
-        """
-        Deserialize a callable from a dictionary.
-
-        Parameters
-        ----------
-        value: The dictionary to deserialize.
-
-        Returns
-        -------
-        The callable represented by the dictionary.
-        """
-        module = value["module"]
-        name = value["name"]
-        file_path = value.get("file_path", "")
-        if file_path:
-            spec = importlib.util.spec_from_file_location(name, file_path)
-            if spec is None:
-                msg = f"Could not find spec for module {name} at {file_path}"
-                raise ImportError(msg)
-            module = importlib.util.module_from_spec(spec)
-            if spec.loader is None:
-                msg = f"Could not load module {name} at {file_path}"
-                raise ImportError(msg)
-            spec.loader.exec_module(module)
-        else:
-            module = importlib.import_module(module)
-        return getattr(module, name)
-
-    @model_serializer(mode="wrap")
-    def _wrap_ser(self, handler: SerializerFunctionWrapHandler):
-        """Serialize the Configclass instance."""
-        # use standard pydantic serialization exclude callables
-        # and add the _config_class_type attribute
-
-        data: dict[str, Any] = {}
-
-        data["_config_class_type"] = self._config_class_type
-
-        # Serialize callables to their string representation
-        for key, field_info in type(self).model_fields.items():
-            value = getattr(self, key)
-            if callable(value):
-                data[key] = self._callable_serialization(value)
-            elif isinstance(value, list):
-                # If the value is a list, serialize each callable in the list
-                data[key] = [
-                    self._callable_serialization(item)
-                    if callable(item)
-                    else item
-                    for item in value
-                ]
-            elif isinstance(value, dict):
-                # If the value is a dict, serialize each callable in the dict
-                data[key] = {
-                    sub_key: self._callable_serialization(sub_value)
-                    if callable(sub_value)
-                    else sub_value
-                    for sub_key, sub_value in value.items()
-                }
-            else:
-                # Otherwise, use the standard serialization
-                data[key] = value
-
-        return data
-
-    @model_validator(
-        mode="before",
-    )
-    @classmethod
-    def _wrap_val(cls, data: dict[str, Any], info) -> dict[str, Any]:
-        for key, value in data.items():
-            if (
-                isinstance(value, dict)
-                and "type" in value
-                and value["type"] == "callable"
-            ):
-                data[key] = cls._callable_deserialization(value)
-            # check for list of Callable
-            elif isinstance(value, list):
-                for i, item in enumerate(value):
-                    if (
-                        isinstance(item, dict)
-                        and "type" in item
-                        and item["type"] == "callable"
-                    ):
-                        data[key][i] = cls._callable_deserialization(item)
-            elif isinstance(value, dict):
-                for sub_key, sub_value in value.items():
-                    if (
-                        isinstance(sub_value, dict)
-                        and "type" in sub_value
-                        and sub_value["type"] == "callable"
-                    ):
-                        data[key][sub_key] = cls._callable_deserialization(
-                            sub_value
-                        )
-        return data
+    def __new__(cls, *args, **kwargs):
+        """Accept keyword construction before native initialization."""
+        return super().__new__(cls)
 
     def __init_subclass__(cls, **kwargs):
-        """
-        Initialize the subclass and register it in the ConfigClassRegistry.
+        """Register the subclass and configure its fields in the Rust backend.
 
-        This method is called when a class is defined that
-        inherits from Configclass.
-        It registers the class in the ConfigClassRegistry.
+        Called automatically when a class body is executed. You never need to
+        call this directly.
         """
+        super().__init_subclass__(**kwargs)
+        _configure_config_class(cls)
         ConfigClassRegistry.register(cls)
-        return super().__init_subclass__(**kwargs)
+
+    def __init__(self, **data):
+        """Create a config instance, optionally overriding field defaults.
+
+        Parameters
+        ----------
+        **data:
+            Initial field values. Any field not supplied takes its declared
+            default. Unknown keys raise ``ValueError``.
+
+        Example
+        -------
+        >>> from simple_config_builder.config import Configclass
+        >>> class Config(Configclass):
+        ...     host: str = "localhost"
+        ...     port: int = 8080
+        >>> Config(host="example.com").host
+        'example.com'
+        >>> Config().port
+        8080
+        """
+        _init_config_instance(self, data)
+
+    def __setattr__(self, name: str, value: Any):
+        """Set a field, running Rust-side validation before accepting the value.
+
+        Raises ``ValueError`` if the value violates a ``gt`` / ``lt``
+        constraint or has the wrong type.
+        """
+        if _set_config_attr(self, name, value):
+            return
+        super().__setattr__(name, value)
+
+    def model_dump(self) -> dict[str, Any]:
+        """Serialize the config instance to a plain Python dictionary.
+
+        Nested :class:`Configclass` instances are also converted to dicts
+        recursively.
+
+        Example
+        -------
+        >>> from simple_config_builder.config import Configclass
+        >>> class Config(Configclass):
+        ...     host: str = "localhost"
+        ...     port: int = 8080
+        >>> Config().model_dump()
+        {'_config_class_type': 'simple_config_builder.config.Config', 'host': 'localhost', 'port': 8080}
+        """
+        return _model_dump(self)
+
+    def model_dump_json(self) -> str:
+        """Serialize the config instance to a compact JSON string.
+
+        Example
+        -------
+        >>> from simple_config_builder.config import Configclass
+        >>> import json
+        >>> class Config(Configclass):
+        ...     name: str = "demo"
+        >>> json.loads(Config().model_dump_json())['name']
+        'demo'
+        """
+        return _model_dump_json(self)
 
     @classmethod
-    def __get_pydantic_json_schema__(cls, core_schema, handler):
-        """Get the JSON schema for the Configclass."""
-        # Check for Callable fields and convert them to a string representation
-        for key, field_info in cls.model_fields.items():
-            print(core_schema)
-            if field_info.annotation == "Callable":
-                # Convert Callable to a string representation
-                core_schema = core_schema.copy()
-                print(core_schema)
-                core_schema["type"] = "string"
-                core_schema["description"] = (
-                    "A callable function, represented as a string."
-                )
-                core_schema["example"] = "module_name.function_name"
+    def model_validate(cls, data: dict[str, Any]) -> "Configclass":
+        """Build a config instance from a plain dictionary, validating all fields.
 
-        return super().__get_pydantic_json_schema__(core_schema, handler)
+        Parameters
+        ----------
+        data:
+            Dictionary of field values. Unknown keys raise ``ValueError``.
 
-    model_config = ConfigDict(
-        validate_assignment=True,
-    )
+        Example
+        -------
+        >>> from simple_config_builder.config import Configclass
+        >>> class Config(Configclass):
+        ...     host: str = "localhost"
+        ...     port: int = 8080
+        >>> cfg = Config.model_validate({'host': 'db.example.com', 'port': 5432})
+        >>> cfg.host
+        'db.example.com'
+        """
+        instance = cls.__new__(cls)
+        _init_config_instance(instance, data)
+        return instance
+
+    @classmethod
+    def model_validate_json(cls, data: str | bytes) -> "Configclass":
+        """Build a config instance from a JSON string or bytes, validating all fields.
+
+        Example
+        -------
+        >>> from simple_config_builder.config import Configclass
+        >>> class Config(Configclass):
+        ...     host: str = "localhost"
+        >>> cfg = Config.model_validate_json('{"host": "prod.example.com"}')
+        >>> cfg.host
+        'prod.example.com'
+        """
+        return cls.model_validate(_model_validate_json(data))
+
+    @classmethod
+    def model_json_schema(cls) -> dict[str, Any]:
+        """Return a JSON Schema dict describing this config class.
+
+        The schema reflects field types and ``gt`` / ``lt`` constraints and
+        can be used for validation in other tools or for documentation.
+
+        Example
+        -------
+        >>> from simple_config_builder.config import Configclass, Field
+        >>> class Config(Configclass):
+        ...     port: int = Field(gt=0, lt=65536, default=8080)
+        >>> schema = Config.model_json_schema()
+        >>> 'port' in schema.get('properties', {})
+        True
+        """
+        return _model_json_schema(cls)
 
 
 class ConfigClassRegistry:
-    """Registry to hold all registered classes."""
+    """Global registry of all :class:`Configclass` subclasses.
 
-    __registry: ClassVar = {}  # Class variable to hold the registry
+    Classes are registered automatically when their class body is executed
+    (via :meth:`Configclass.__init_subclass__`). You only need to interact
+    with this directly when looking up classes by fully-qualified name, e.g.
+    when deserializing config data that embeds a ``_config_class_type`` key.
+
+    Example
+    -------
+    >>> from simple_config_builder.config import Configclass, ConfigClassRegistry
+    >>> class MyConfig(Configclass):
+    ...     value: int = 1
+    >>> ConfigClassRegistry.is_registered(MyConfig)
+    True
+    >>> 'config.MyConfig' in ConfigClassRegistry.list_classes() or any('MyConfig' in c for c in ConfigClassRegistry.list_classes())
+    True
+    """
 
     @classmethod
     def get_class_str_from_class(cls, class_to_register: type):
+        """Return the fully-qualified ``module.ClassName`` string for a class.
+
+        This string is used as the key in the registry and as the
+        ``_config_class_type`` value embedded in serialized config files.
         """
-        Get the class string from a class.
-
-        The class string is the module and class name of the
-        class separated by a dot.
-
-        Example:
-            ```
-            class_to_register = MyClass
-            get_class_str_from_class(class_to_register)
-            # Returns: "mymodule.MyClass"
-            ```
-
-
-        Parameters
-        ----------
-        class_to_register: The class to get the class string from.
-        """
-        return f"{class_to_register.__module__}.{class_to_register.__name__}"
+        return _registry_get_class_str_from_class(class_to_register)
 
     @classmethod
     def register[T](cls, class_to_register: type[T]):
-        """
-        Register a class in the global registry.
+        """Register a class in the global registry.
 
-        Parameters
-        ----------
-        class_to_register: The class to register.
-
-        Raises
-        ------
-        ValueError: If the class is already registered.
+        Called automatically by :meth:`Configclass.__init_subclass__`.
+        Raises ``ValueError`` if the class is already registered.
         """
-        if class_to_register not in cls.__registry:
-            class_str = cls.get_class_str_from_class(class_to_register)
-            cls.__registry[class_str] = class_to_register
-        else:
-            exception_msg = (
-                f"{cls.get_class_str_from_class(class_to_register)} "
-                f"is already registered."
-            )
-            raise ValueError(exception_msg)
+        _registry_register_class(class_to_register)
 
     @classmethod
     def list_classes(cls) -> list[str]:
-        """
-        List all registered classes.
-
-        Returns
-        -------
-        A list of class strings of all registered classes.
-        """
-        return list(cls.__registry.keys())
+        """Return fully-qualified names of all registered :class:`Configclass` subclasses."""
+        return _registry_list_classes()
 
     @classmethod
     def is_registered(cls, class_to_register) -> bool:
-        """
-        Check if a class is already registered.
-
-        Parameters
-        ----------
-        class_to_register: The class to check.
-        """
-        return (
-            cls.get_class_str_from_class(class_to_register) in cls.__registry
-        )
+        """Return ``True`` if the given class is already in the registry."""
+        return _registry_is_registered(class_to_register)
 
     @classmethod
     def get(cls, class_name) -> Type[Configclass]:
-        """
-        Get a class from the registry by name.
+        """Look up and return a registered class by its fully-qualified name.
 
         Parameters
         ----------
-        class_name: The name of the class to get.
+        class_name:
+            A string of the form ``"module.ClassName"``.
 
         Raises
         ------
-        ValueError: If the class is not registered.
-
-        Returns
-        -------
-        The class if it is registered.
+        KeyError
+            If no class with that name is registered.
         """
-        for class_to_register in cls.__registry:
-            if class_to_register == class_name:
-                return cls.__registry[class_to_register]
-        raise ValueError(f"{class_name} is not registered.")
+        return _registry_get(class_name)
 
     @classmethod
     def get_class_attributes(cls, class_name: str) -> dict[str, Any]:
+        """Return the declared fields of a registered class as a dict.
+
+        Keys are field names; values are :class:`FieldInfo` objects from
+        the Rust backend.
         """
-        Get the attributes of a class by name.
+        return _registry_get_class_attributes(class_name)
+
+    @classmethod
+    def list_subclasses(
+        cls,
+        base_class: str | type[Configclass],
+        *,
+        include_base: bool = False,
+        recursive: bool = False,
+    ) -> list[str]:
+        """Return fully-qualified names of registered subclasses of ``base_class``.
 
         Parameters
         ----------
-        class_name: The name of the class to get attributes from.
-
-        Returns
-        -------
-        A dictionary of attributes of the class.
+        base_class:
+            The class (or its fully-qualified name string) whose subclasses
+            to list.
+        include_base:
+            If ``True``, include ``base_class`` itself in the result.
+        recursive:
+            If ``True``, include indirect subclasses (grandchildren, etc.).
         """
-        config_class = cls.get(class_name)
-        if config_class is None:
-            raise ValueError(f"{class_name} is not registered.")
-        fields = {
-            key: value.annotation
-            for key, value in config_class.model_fields.items()
-        }
-        return fields
+        return _registry_list_subclasses(
+            base_class,
+            include_base=include_base,
+            recursive=recursive,
+        )
 
 
 __all__ = [

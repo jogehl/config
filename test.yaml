@@ -1,0 +1,76 @@
+_config_class_type: demo_config.ServerConfig
+app_name: ''
+cache:
+  _config_class_type: demo_config.CacheConfig
+  backend: local
+  enabled: true
+  max_entries: 10000
+  ttl_seconds: 3600
+database:
+  _config_class_type: demo_config.DatabaseConfig
+  connection_timeout: 5
+  host: localhost
+  max_connections: 10
+  name: mydb
+  port: 5432
+  user: admin
+debug: false
+health_check:
+  file_path: ''
+  module: ''
+  name: ''
+  type: ''
+logging:
+  _config_class_type: demo_config.LoggingConfig
+  backup_count: 0
+  formatter:
+    file_path: ''
+    module: ''
+    name: ''
+    type: ''
+  level: ''
+  max_file_size_mb: 0
+  output_path: ''
+max_request_size_kb: 0
+request_timeout: 0
+some_class:
+  _config_class_type: demo_config.ServerConfig
+  app_name: ''
+  cache:
+    _config_class_type: demo_config.CacheConfig
+    backend: local
+    enabled: true
+    max_entries: 10000
+    ttl_seconds: 3600
+  database:
+    _config_class_type: demo_config.DatabaseConfig
+    connection_timeout: 5
+    host: localhost
+    max_connections: 10
+    name: mydb
+    port: 5432
+    user: admin
+  debug: false
+  health_check:
+    file_path: ''
+    module: ''
+    name: ''
+    type: ''
+  logging:
+    _config_class_type: demo_config.LoggingConfig
+    backup_count: 0
+    formatter:
+      file_path: ''
+      module: ''
+      name: ''
+      type: ''
+    level: ''
+    max_file_size_mb: 0
+    output_path: ''
+  max_request_size_kb: 0
+  request_timeout: 0
+  some_class: {}
+  version: ''
+  workers: 0
+version: ''
+workers: 0

@@ -1,13 +1,32 @@
-"""Utils for the config module."""
+"""Utility helpers for discovering and importing Configclass modules."""
 
 
 def import_modules_from_directory(directory: str):
-    """
-    Import and check fo Configclass subclasses in the given directory.
+    """Recursively import all Python files in ``directory`` that contain Configclass subclasses.
+
+    Walking the directory tree, this function imports any ``.py`` file
+    (excluding ``__init__.py``) whose source contains the string
+    ``"Configclass"``.  Importing the module causes every
+    :class:`~simple_config_builder.config.Configclass` subclass defined in
+    that file to be registered in
+    :class:`~simple_config_builder.config.ConfigClassRegistry`.
 
     Parameters
     ----------
-    directory: str
+    directory:
+        Absolute or relative path to the directory to scan.
+
+    Raises
+    ------
+    ImportError
+        If a matching file cannot be loaded (syntax error, missing
+        dependency, etc.).
+
+    Note
+    ----
+    This function has a side effect: it registers all discovered
+    :class:`~simple_config_builder.config.Configclass` subclasses globally.
+    Call it once at application startup before any config parsing.
     """
     # Iterate over all files and subdirectories in the given directory
     import os
